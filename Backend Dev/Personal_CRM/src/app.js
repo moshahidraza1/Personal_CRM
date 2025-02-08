@@ -4,12 +4,19 @@ import testRouter from "./routes/test.routes.js";
 import errorHandler from "./middlewares/errorHandler.middleware.js";
 import helmet from "helmet";
 import morgan from "morgan";
+import rateLimit from "express-rate-limit";
 
 const app = express();
-app.use(express.json()); // for parsing application/json
-// app.get("/health",(req,res)=>{
-//     res.json({status:"ok",timestamp: new Date()});
-// });
+
+// Rate limiting
+const apiLimiter = new rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: "Too many requests from this IP, please try again after an hour",
+});
+app.use("/user/", apiLimiter);
+app.use(express.json());
+
 app.use(errorHandler); // for handling errors
 app.use(morgan('dev')); // Logs requests like "GET /api/health 200 12ms"
 app.use(helmet()); // for security
