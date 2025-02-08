@@ -6,7 +6,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 const app = express();
-
+app.use(express.json()); // for parsing application/json
 // app.get("/health",(req,res)=>{
 //     res.json({status:"ok",timestamp: new Date()});
 // });
@@ -16,6 +16,10 @@ app.use(helmet()); // for security
 app.use("/api/v1/health", healthRouter);
 
 app.use("/api/v1/test", testRouter);
+
+//user routes
+import userRouter from "./routes/user.routes.js";
+app.use("/api/v1/user", userRouter);
 
 
 export {app};
