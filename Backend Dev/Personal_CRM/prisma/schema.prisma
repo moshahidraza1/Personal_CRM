@@ -6,13 +6,25 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
+enum Role {
+  FREE
+  PREMIUM
+  ADMIN
+}
 model User {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  lastName  String
+  firstName String 
+  lastName  String?
   username  String   @unique
-  firstName String
+  email     String   @unique
+  password  String 
+  avatar String?
+  role Role @default(FREE)
+  updatedAt DateTime @updatedAt
+  isActive Boolean @default(true)
+  lastLoginAt DateTime?
+  emailVerified Boolean @default(false)
+  refreshToken String?
+  accessToken String?
+  createdAt DateTime @default(now())
 }
