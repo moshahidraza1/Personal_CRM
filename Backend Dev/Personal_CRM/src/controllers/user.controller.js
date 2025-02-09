@@ -1,5 +1,72 @@
 import prisma from "../db/db.config.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
+
+const options = {
+    httpOnly:true,
+    secure: true,
+    maxAge: 24*60*60*1000
+};
+
+// access Token and refresh token
+
+async function generateAccessAndRefreshToken(userId) {
+
+    try {
+        const user = await prisma.user.findUnique(
+            {
+                where: {
+                    id: userId
+                }
+            }
+        );
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        const accessToken = jwt.sign({
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+        },
+            process.env.ACCESS_TOKEN_SECRET,
+            {
+                expiresIn: process.env.ACCESS_TOKEN_EXPIRY
+            }
+        );
+
+        const refreshToken = jwt.sign(
+            {
+                id: user.id,
+            },
+            process.env.REFRESH_TOKEN_SECRET,
+            {
+                expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+            }
+        );
+        await prisma.user.update({
+            where:{
+                id:user.id
+            },
+            data:{
+                accessToken,
+                refreshToken
+            }
+        });
+        return {accessToken, refreshToken};
+    } catch (error) {
+
+        console.error("Token generation error: ", error);
+
+        throw new Error("Failed to generate token");
+    }
+
+}
+
+
 const createUser = async (req,res)=>{
     const {username, firstName, lastName, email, password} = req.body;
     if(![username, firstName, lastName, email, password].every((field)=>field && field.trim()!== "")){
@@ -64,7 +131,8 @@ const loginUser = async (req,res)=>{
     const conditions = [];
     if(email) conditions.push({email});
     if(username) conditions.push({username});
-    const user = await prisma.user.findFirst({
+    try{
+        const user = await prisma.user.findFirst({
         where:{
             OR:conditions
         }
@@ -77,9 +145,16 @@ const loginUser = async (req,res)=>{
     if(!passwordMatch){
        return res.json({status:400, message:"Invalid password"});
     }
+    const {accessToken,refreshToken} = await generateAccessAndRefreshToken(user.id);
 
-    return res.json({status:200, message:"Login successful"});
-
+    
+    // send secure cookies
+    return res.status(200).cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options).json({ message:"Login successful"});
+    } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message:"Something went wrong while logging in"});
+    }
 };
 
 export {createUser, loginUser};
