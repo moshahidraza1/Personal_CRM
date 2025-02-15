@@ -1,8 +1,7 @@
 import prisma from "../db/db.config.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
+import { sendVerificationEmail } from "../utils/sendEmail.utils.js";
 
 const options = {
     httpOnly:true,
@@ -83,6 +82,8 @@ const createUser = async (req,res)=>{
         if(findUser){
             return res.json({status:400, message:"User already exists"});
         }
+        //Generate verification code
+        const verificationCode = Math.floor(100000 + Math.random() * 900000);
         // hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = await prisma.user.create({
@@ -91,9 +92,13 @@ const createUser = async (req,res)=>{
                 firstName,
                 lastName,
                 email,
-                password:hashedPassword
+                password:hashedPassword,
+                verificationCode,
+                verificationCodeExpires: new Date(Date.now() + 10 * 60 * 1000)
             }
-        })
+        });
+        // send verification email
+        await sendVerificationEmail(email,verificationCode);
         const createdUser = await prisma.user.findUnique({
             where:{
                 id:newUser.id
@@ -117,6 +122,57 @@ const createUser = async (req,res)=>{
         
     }
 }
+
+// verify user email
+const verifyEmail = async (req,res)=>{
+    const {email, verificationCode} = req.body;
+
+    try{
+        const user = await prisma.user.findUnique({
+            where:{
+                email
+            }
+        });
+        if(!user){
+            return res.json({status:400, message:"User not found"});
+        }
+        if(user.emailVerified){
+            return res.json({
+                status:400,
+                message:"Email already verified"
+            })
+        }
+        if(user.verificationCode !== verificationCode){
+            return res.json({
+                status:400,
+                message:"Invalid verification code"
+            });
+        }
+        if(user.verificationCodeExpires < new Date()){
+            return res.json({
+                status:400,
+                message:"Verification code expired"
+            });
+        }
+        await prisma.user.update({
+            where:{
+                email
+            },
+            data:{
+                emailVerified:true,
+                verificationCode:null,
+                verificationCodeExpires:null
+            }
+        });
+        return res.json({
+            status:200,
+            message:"Email verified successfully"
+        });
+    }catch(error){
+        console.error(error);
+            return res.status(500).json({message:"Something went wrong while verifying email"});
+        }
+};
 
 // login user
 
@@ -157,4 +213,7 @@ const loginUser = async (req,res)=>{
     }
 };
 
-export {createUser, loginUser};
+
+export {createUser,
+    verifyEmail,
+    loginUser};

@@ -24,6 +24,8 @@ model User {
   isActive Boolean @default(true)
   lastLoginAt DateTime?
   emailVerified Boolean @default(false)
+  verificationCode String?
+  verificationCodeExpires DateTime?
   refreshToken String?
   accessToken String?
   createdAt DateTime @default(now())
