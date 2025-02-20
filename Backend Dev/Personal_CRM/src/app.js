@@ -16,7 +16,7 @@ const apiLimiter = RateLimitRequestHandler({
 });
 app.use("/user/", apiLimiter);
 app.use(express.json());
-
+app.use(express.urlencoded({ extended: true }));
 app.use(errorHandler); // for handling errors
 app.use(morgan('dev')); // Logs requests like "GET /api/health 200 12ms"
 app.use(helmet()); // for security

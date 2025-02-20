@@ -11,16 +11,13 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-export const sendVerificationEmail = async (email, verificationCode) => {
+export const sendVerificationEmail = async (email, emailContent) => {
     try{
         const mailOptions={
             from: process.env.EMAIL,
             to: email,
             subject: 'Email Verification',
-            html:
-            `<h1>Email Verification</h1>
-            <p>Your verification code to register on Personal CRM is: <strong>${verificationCode}</strong></p>
-            <p>This code will expire in 10 minutes.</p>`
+            html: emailContent
         };
         const info = await transporter.sendMail(mailOptions);
         return {

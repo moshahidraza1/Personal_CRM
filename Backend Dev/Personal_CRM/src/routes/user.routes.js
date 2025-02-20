@@ -1,7 +1,7 @@
 import {Router} from 'express';
-import { createUser,verifyEmail,loginUser } from '../controllers/user.controller.js';
+import { createUser,resendVerificationCode,verifyEmail,loginUser, logOut,updatePassword,forgotPassword,resetPassword } from '../controllers/user.controller.js';
 
-import { body } from 'express-validator';
+import { body, query } from 'express-validator';
 import validateRequest from '../middlewares/InputValidator.middleware.js';
 
 
@@ -20,11 +20,17 @@ router.post("/register", validateRequest([
 ]),
 createUser);
 
+// reVerify email
+router.post("/reVerify-email", validateRequest([
+    emailChain()
+]), resendVerificationCode);
+
 // email verification
-router.post("/verify-email",
+router.get("/verify-email",
     validateRequest([
-        emailChain(),
-        body('verificationCode').notEmpty().withMessage('Verification code is required')
+        query('email').isEmail().withMessage('Valid Email is required'),
+        query('verificationCode').notEmpty().withMessage('Verification code is required'),
+
     ]),
     verifyEmail
 );
@@ -35,5 +41,27 @@ router.post("/login", validateRequest([
     body('username').optional().notEmpty().withMessage('Username is required'),
     passwordChain(),
 ]),loginUser);
+
+// user logOut
+router.post("/logOut", logOut);
+
+//updatePassword
+router.post("/updatePassword", validateRequest([
+    body('oldPassword').isLength({min:8}).withMessage('Old password is required'),
+    body('newPassword').isLength({min:8}).withMessage('New password is required'),
+]),
+updatePassword);
+
+// forgot password
+router.post("/forgotPassword", validateRequest([
+    emailChain
+]), forgotPassword);
+
+// reset password
+router.post("/resetPassword", validateRequest([
+    emailChain,
+    body('resetCode').notEmpty().withMessage("Missing password reset code"),
+    body('newPassword').isLength({min:8}).withMessage("Minimum 8 characters are required for password")
+]), resetPassword);
 
 export default router;
