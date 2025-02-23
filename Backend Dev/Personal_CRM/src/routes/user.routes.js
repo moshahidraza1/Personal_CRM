@@ -1,5 +1,5 @@
 import {Router} from 'express';
-import { createUser,resendVerificationCode,verifyEmail,loginUser, logOut,updatePassword,forgotPassword,resetPassword } from '../controllers/user.controller.js';
+import { renewAccessToken,createUser,resendVerificationCode,verifyEmail,loginUser, logOut,updatePassword,forgotPassword,resetPassword } from '../controllers/user.controller.js';
 
 import { body, query } from 'express-validator';
 import validateRequest from '../middlewares/InputValidator.middleware.js';
@@ -63,5 +63,8 @@ router.post("/resetPassword", validateRequest([
     body('resetCode').notEmpty().withMessage("Missing password reset code"),
     body('newPassword').isLength({min:8}).withMessage("Minimum 8 characters are required for password")
 ]), resetPassword);
+
+// generate access token using refresh token
+router.post("/renewToken", renewAccessToken);
 
 export default router;

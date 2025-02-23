@@ -44,7 +44,7 @@ const generateRefreshToken = (user)=>{
     }
 )};
 
-async function generateAccessAndRefreshToken(userId) {
+const generateAccessAndRefreshToken = async(userId)=> {
 
     try {
         const user = await prisma.user.findUnique(
@@ -78,6 +78,53 @@ async function generateAccessAndRefreshToken(userId) {
 
 }
 
+// generate accessToken if user has refreshToken
+
+const renewAccessToken = async(req,res)=>{
+    try {
+        const token = req.cookies?.refreshToken || req.body.refreshToken;
+        if(!token){
+            return res.status(401).json({
+                message:"Invalid request for generating accessToken"
+            });
+        }
+
+        // verify refresh token
+
+        try {
+            const decode = jwt.verify(token,process.env.REFRESH_TOKEN_SECRET);
+        } catch (err) {
+            return res.status(401).json({
+                message: "invalid refresh Token."
+            });
+        }
+
+        const user = await prisma.user.findUnique({
+            where:{
+                id:decode.id
+            }
+        });
+        if(!user){
+            return res.status(401).json({
+                message:"User not found"
+            })
+        }
+        // generate new access token
+        const {accessToken, refreshToken} = generateAccessAndRefreshToken(user);
+        return res.status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json({
+            message: "Successfully generated new access token."
+        });
+    
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Something went wrong while renewing access token"
+        });
+    }
+}
 
 const createUser = async (req,res)=>{
     const {username, firstName, lastName, email, password} = req.body;
@@ -426,12 +473,12 @@ const resetPassword = async(req,res)=>{
                 message:"Invalid reset code"
             });
         }
-        if(user.passwordResetCodeExpires < Date.now()){
+        if(new Date(user.passwordResetCodeExpires) < Date.now()){
             return res.status(400).json({
                 message:"reset code expired"
             });
         }
-        const hashedPassword = bcrypt.hash(newPassword,10);
+        const hashedPassword = await bcrypt.hash(newPassword,10);
         await prisma.user.update({
             where:{
                 email
@@ -457,7 +504,9 @@ const resetPassword = async(req,res)=>{
 
 
 
-export {createUser,
+export {
+    renewAccessToken,
+    createUser,
     resendVerificationCode,
     verifyEmail,
     loginUser,
