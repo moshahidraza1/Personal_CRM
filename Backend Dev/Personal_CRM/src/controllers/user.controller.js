@@ -502,6 +502,105 @@ const resetPassword = async(req,res)=>{
 
 };
 
+// update user details
+const updateUserAccountDetails = async(req,res)=>{
+    const {firstName,lastName,avatar}=req.body;
+    if(!firstName && !lastName && !avatar){
+        return res.status(400).json({
+            message: "Bad request, nothing to update"
+        });
+    }
+    try {
+        const user = await prisma.user.findFirst({
+            where:{
+                id: req.user.id
+            }
+        });
+        if(!user){
+            return res.status(401).json({
+                message:"user not found"
+            });
+    
+        }
+        if(firstName){
+            await prisma.user.update({
+                where:{
+                    id: user.id
+                },
+                data:{
+                    firstName
+                }
+            });
+        }
+        if(lastName){
+            await prisma.user.update({
+                where:{
+                    id: user.id
+                },
+                data:{
+                    lastName
+                }
+            });
+        }
+        //TODO: Avatar image encoding and upload
+        if(avatar){
+            await prisma.user.update({
+                where:{
+                    id: user.id
+                },
+                data:{
+                    avatar
+                }
+            });
+        }
+
+        return res.status(200).json({
+            message:"Successfully updated user details"
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message:"Something went wrong while updating user details"
+        });
+    }
+
+}
+
+// Account activation and deactivation
+
+const userStatus = async(req,res)=>{
+    try {
+        const user = await prisma.user.findFirst({
+            where:{
+                id: req.user.id
+            }
+        });
+        if(!user){
+            return res.status(400).json({
+                message:"User not found"
+            });
+        }
+        const isActive = !(user.isActive);
+        await prisma.user.update({
+            where:{
+                id: user.id
+            },
+            data:{
+                isActive
+            }
+        });
+        return res.status(200).json({
+            message:"Successfully updated user active status"
+        });
+    } catch (error) {
+        console.error(error);
+        return res.statud(500).json({
+            message: "Something went wrong while updating user's active status"
+        });
+    }
+
+}
 
 
 export {
@@ -513,5 +612,7 @@ export {
     logOut,
     updatePassword,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    updateUserAccountDetails,
+    userStatus
 };
