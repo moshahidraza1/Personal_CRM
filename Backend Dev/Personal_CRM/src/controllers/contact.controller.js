@@ -5,7 +5,7 @@ const addContact = async(req, res)=>{
     
     const userId = req.user.id;
     try{
-        const {firstName, lastName, email, phone, address, company, jobRole, notes, customFields, tags} = req.body;
+        const {firstName, lastName, email, phone, address, company, jobRole, customFields, tags} = req.body;
 
     const existingContact = await prisma.contact.findFirst({
         where:{
@@ -47,7 +47,6 @@ const addContact = async(req, res)=>{
             address,
             company,
             jobRole,
-            notes,
             customFields,
             user:{
                 connect:{
@@ -72,58 +71,213 @@ const addContact = async(req, res)=>{
 }
 
 // get contact id
-const getContactId = async(contactName,userId)=>{
-
+const getContactById = async(req,res)=>{
+    const {contactId} = req.params;
     try {
         const contact = await prisma.contact.findFirst({
             where:{
-                name: contactName,
-                userId
+                id: parseInt(contactId),// correct this
+                userId: req.user.id
+            },
+            include:{
+                tags:{
+                    include:{
+                        tag:true
+                    }
+                }
             }
         });
-        return contact;
+        if (!contact) {
+            return res.status(404).json({
+              message: "Contact not found"
+            });
+          }
+          
+          return res.status(200).json({
+            message: "Contact details found",
+            data: contact
+          });
 
     } catch (error) {
         console.error(error);
-        throw new Error("Failed to find contact")
+    return res.status(500).json({
+      message: "Error fetching contact details"
+        });
     }
 
 }
 
-// get contact details
-const getContact = async(req,res)=>{
-    const {contactName} = req.body;
+// get contacts based on input/filters with pagination
+const searchContact = async(req,res)=>{
+    const {searchTerm, tagsArray, matchType = 'any',page = 1, limit = 10,sortBy = 'updatedAt', order = 'desc'} = req.body;
     try {
-        const contactExists = getContactId(contactName,req.user.id);
-        if(!contactExists){
+
+        const searchFilters = searchTerm?{
+            OR:[
+                {firstName: { contains: searchTerm, mode: 'insensitive'}},
+                {lastName:{contains: searchTerm, mode:'insensitive'}},
+                {email:{contains: searchTerm, mode: 'insensitive'}},
+                {phone:{contains: searchTerm}}
+            ]
+        }:{};
+
+        const tagFilters = {};
+        if(tagsArray && Array.isArray(tagsArray) && tagsArray.length > 0){
+            if(matchType === 'any'){
+                tagFilters={
+                    tags:{
+                        some:{
+                            tag:{
+                               name:{ in: tagsArray }
+                            } 
+                        }
+                    }
+                }
+        }else if(matchType === 'all'){
+            const contactIds = await prisma.contactTag.groupBy({
+                by: ['contactId'],
+                where:{
+                    tag:{
+                        name:{in: tagsArray}
+                    },
+                    contact:{
+                        userId: req.user.id
+                    }
+                },
+                having: {contactId: {_count:tagsArray.length}}
+            });
+
+            tagFilters = {
+               id:{ in:contactIds.map((c) => c.contactId)}
+            }
+        }
+    }
+        const pageNumber = parseInt(page,10)|| 1;
+        const pageSize = parseInt(limit,10)|| 10;
+        const skip = (pageNumber-1)*pageSize;
+
+        const [totalContacts,contacts] = await Promise.all([
+            prisma.contact.count({
+            where:{
+                userId: req.user.id,
+                ...searchFilters,
+                ...tagFilters
+            }}),
+            prisma.contact.findMany({
+            where:{
+                userId: req.user.id,
+                ...searchFilters,
+                ...tagFilters
+            },
+            orderBy:{[sortBy]:order},
+            skip:skip,
+            take: pageSize,
+            select:{
+                id:true,
+                firstName:true,
+                lastName: true,
+                email: true,
+                phone: true,
+                company: true,
+                jobRole:true,
+                tags:{
+                   select:{
+                    tag:{
+                    select:{name:true}
+                        }
+                    }
+                }
+            }
+        })
+    ]
+);
+
+    const processedContacts = contacts.map(contact=>{
+        const tagNames = contact.tags.map(contactTag => contactTag.tag.name);
+
+        return{
+            ...contact,
+            tags: tagNames
+        };
+    });
+        if(contacts.length == 0){
             return res.status(404).json({
                 message:"Contact you are trying to search does not exists"
             });
         }
+        const totalPages = Math.ceil(totalContacts/pageSize);
 
         return res.status(200).json({
-            message:"Contact details are found",
-            data: contactExists
+            message: `Found ${contacts.length} matching contacts.`,
+            pagination:{
+                currentPage: pageNumber,
+                totalContacts,
+                totalPages,
+                pageSize
+
+            },
+            data: processedContacts   
         })
     } catch (error) {
         console.error(error);
         return res.status(500).json({
-            message:"Something went wrong while fetching contact details"
+            message:"Something went wrong while searching contacts."
         });
     }
 }
 
-// update contact details
+// update contact details - pending
+const updateContact = async(req,res)=>{
+    const {firstName, lastName, email, phone, address, company, jobRole, customFields, tags} = req.body;
+
+
+}
+
+// delete contact
+const deleteContact = async(req,res)=>{
+    const {contactId} = req.body;
+    try {
+        const contact = await prisma.contact.findFirst({
+            where:{
+                id: parseInt(contactId),
+                userId: req.user.id
+            }
+        });
+        if(!contact){
+            return res.status(404).json({
+                message:"Contact not found or you don't have permission to delete"
+            });
+        }
+        await prisma.contact.delete({
+            where:{
+                id: parseInt(contactId)
+            }
+        });
+        return res.status(200).json({
+            message:"Contact Successfully deleted"
+        })
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message:"Something went wrong while deleting contact"
+        });
+    }
+}
 
 // Add tags to a contact
 const addTag = async(req,res)=>{
 
-    const {tags, contactName} = req.body;
+    const {tags, contactId} = req.body;
 
     try {
     
-    const contactExists = getContactId(contactName,req.user.id);
-    if(!contactExists){
+        const contact = await prisma.contact.findFirst({
+            where:{
+                id: parseInt(contactId),// correct this
+                userId: req.user.id
+            },
+        });
+    if(!contact){
         return res.status(404).json({
             message:"Contact not found in user contacts"
         })
@@ -149,7 +303,8 @@ const addTag = async(req,res)=>{
 
     const updatedContactTag = await prisma.contact.update({
         where:{
-            id: parseInt(contactId)
+            id: parseInt(contactId),
+            userId: req.user.id
         },
         data:{
             tags: tagsData,
@@ -170,13 +325,9 @@ const addTag = async(req,res)=>{
 
 }
 
-// get all contacts(maybe add pagination)
 
+// add contact notes - separate file
 
-//search and filter contacts
-
-// add contact notes
-// 
 
 // get tagId using tagName
 const getTagId = async(tagName, userId,options={})=>{
@@ -198,11 +349,11 @@ const getTagId = async(tagName, userId,options={})=>{
 
 // delete tag from a single contact
 const deleteTagFromContact = async(req, res)=>{
-    const {contactName, tagName} = req.body;
+    const {contactId, tagName} = req.body;
 
     try {
         const userId = req.user.id;
-        const contactId = getContactId(contactName,userId);
+        
         const tagId = getTagId(tagName,userId);
 
         const isContactTag = await prisma.contactTag.findFirst({
@@ -296,36 +447,7 @@ const deleteTag = async(req,res)=>{
     }
 }
 
-// delete contact
-const deleteContact = async(req,res)=>{
-    const {contactId} = req.body;
-    try {
-        const contactExists = await prisma.contact.findFirst({
-            where:{
-                id: parseInt(contactId),
-                userId: req.user.id
-            }
-        });
-        if(!contactExists){
-            return res.status(404).json({
-                message:"Contact not found or you don't have permission to delete"
-            });
-        }
-        await prisma.contact.delete({
-            where:{
-                id: parseInt(contactId)
-            }
-        });
-        return res.status(200).json({
-            message:"Contact Successfully deleted"
-        })
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            message:"Something went wrong while deleting contact"
-        });
-    }
-}
+
 
 export {
     addContact
