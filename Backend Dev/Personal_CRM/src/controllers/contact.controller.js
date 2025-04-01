@@ -109,7 +109,7 @@ const getContactById = async(req,res)=>{
 
 // get contacts based on input/filters with pagination
 const searchContact = async(req,res)=>{
-    const {searchTerm, tagsArray, matchType = 'any',page = 1, limit = 10,sortBy = 'updatedAt', order = 'desc'} = req.body;
+    const {searchTerm, tagsArray, matchType = 'any',page = 1, limit = 10,sortBy = 'updatedAt', order = 'desc'} = req.params;
     try {
 
         const searchFilters = searchTerm?{
@@ -228,7 +228,46 @@ const searchContact = async(req,res)=>{
 
 // update contact details - pending
 const updateContact = async(req,res)=>{
-    const {firstName, lastName, email, phone, address, company, jobRole, customFields, tags} = req.body;
+    const {contactId,firstName, lastName, email, phone, address, company, jobRole, customFields} = req.body;
+    
+    try{
+        const contact = await prisma.contact.findFirst({
+            where:{
+                id:contactId
+            }
+        });
+
+        if(!contact){
+            return res.status(404).json({
+                message:"No contact found to update"
+            });
+        }
+        await prisma.contact.update({
+            where:{
+                id:contactId
+            },
+            data:{
+                firstName,
+                lastName,
+                email, 
+                phone, 
+                address, 
+                company, 
+                jobRole, 
+                customFields,
+                updatedAt: Date.now()
+            }
+        });
+
+        return res.status(200).json({
+            message:"Successfully updated contact"
+        });
+    }catch(error){
+        console.error(error);
+        return res.status(500).json({
+            message: "Error while updating contact details"
+              });
+    }
 
 
 }
@@ -260,6 +299,53 @@ const deleteContact = async(req,res)=>{
         console.error(error);
         return res.status(500).json({
             message:"Something went wrong while deleting contact"
+        });
+    }
+}
+
+// delete multiple contacts at a time
+const deleteMultipleContacts = async(req,res)=>{
+    const {contactIds} = req.body;
+
+    if(!Array.isArray(contactIds)|| contactIds.length===0){
+        return res.status(400).json({
+            message:"Please provide an array or contacts to be deleted"
+        });
+    }
+    try {
+        const parsedIds = contactIds.map(id=>parseInt(id));
+
+        const countContacts = await prisma.contact.count({
+            where:{
+                id:{in:parsedIds},
+
+                userId: req.user.id
+            }
+        });
+
+        if(countContacts!==parsedIds.length){
+            return res.status(400).json({
+                message:"One or more contact is not in your contact's list or you don't have permission to delete."
+            });
+
+        }
+
+        const result = await prisma.contact.deleteMany({
+            where:{
+                id: {in:parsedIds},
+                userId: req.user.id
+            }
+        });
+
+        return res.status(200).json({
+            message:`Successfully deleted ${result.count}`,
+            count : result.count
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message:"Something went wrongf while deleting multiple contacts."
         });
     }
 }
@@ -308,7 +394,7 @@ const addTag = async(req,res)=>{
         },
         data:{
             tags: tagsData,
-            updatedAt: new Date.now()
+            updatedAt: Date.now()
             }
         }
     );
@@ -325,9 +411,83 @@ const addTag = async(req,res)=>{
 
 }
 
+// add multiple tags
+const addMultipleTags = async(req,res)=>{
+    const {contactIds, tags} = req.body;
 
-// add contact notes - separate file
+    if(!Array.isArray(contactIds) || contactIds.length ===0){
+        return res.status(400).json({
+            message:"Please provide array odf contact Ids to add tags"
+        });
+    }
 
+    if(!Array.isArray(tags) || tags.lenth ===0){
+        return res.status(400).json({
+            message:"Pleae provide array of tags to be added to contacts."
+        });
+    }
+
+    try {
+        
+        const parsedIds = contactIds.map(id=> parseInt(id));
+
+        const contactCount = await prisma.contact.count({
+            where:{
+                id: {in:parsedIds},
+                userId: req.user.id
+            }
+        });
+
+        if(contactCount !== parsedIds.length){
+            return res.status(400).json({
+                message:"One or more contacts were not found or you don't have permission to access."
+            });
+        }
+
+        // tag connection for each contact
+
+        const operations = parsedIds.map(contactId => {
+            return prisma.contact.update({
+                where:{
+                    id: contactId, // each contact will be processed one by one
+                },
+                data:{
+                    tags:{  // tags is a field inside contacts
+                        create: tags.map(tagName => ({  // for every tagName, nested prisma oper. to create a new entry
+                            tag:{ // tag is a schema
+                                connectOrCreate: { // if already exists it will not create a duplicate entry
+                                    where:{
+                                        name: tagName // tag entry identifier(unique)
+                                    },
+                                    data:{
+                                        name: tagName,
+                                        userId: req.user.id
+                                    }
+                                }
+                            }
+                        }))
+                    },
+                    updatedAt: new Date()
+                }
+            });
+        });
+
+
+        await prisma.$transaction(operations); // allSettled is not because we want atomic operation, tags are used for filtering contacts, partial updates may cause inconsistancy in db.
+
+        return res.status(200).json({
+            message: `Successfully added tags to ${parsedIds}`,
+            tagsAdded: tags,
+            contactCount: parsedIds.length
+        })
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Something went wrong while adding tags to contacts"
+        });
+    }
+}
 
 // get tagId using tagName
 const getTagId = async(tagName, userId,options={})=>{
@@ -354,7 +514,7 @@ const deleteTagFromContact = async(req, res)=>{
     try {
         const userId = req.user.id;
         
-        const tagId = getTagId(tagName,userId);
+        const tagId = await getTagId(tagName,userId);
 
         const isContactTag = await prisma.contactTag.findFirst({
             where:{
@@ -390,7 +550,7 @@ const getTagUsageCount = async(req,res)=>{
     const {tagName} = req.body;
 
     try {
-        const tag = getTagId(tagName,req.user.id,{
+        const tag = await getTagId(tagName,req.user.id,{
             include:{
                 _count:{
                     select:{
@@ -424,7 +584,7 @@ const getTagUsageCount = async(req,res)=>{
 const deleteTag = async(req,res)=>{
     const {tagName} = req.body;
     try {
-        const tagExists = getTagId(tagName,req.user.id);
+        const tagExists = await getTagId(tagName,req.user.id);
 
         if(!tagExists){
             return res.status(404).json({
@@ -450,5 +610,23 @@ const deleteTag = async(req,res)=>{
 
 
 export {
-    addContact
+    addContact,
+    getContactById,
+    searchContact,
+    updateContact,
+    deleteContact,
+    deleteMultipleContacts,
+    addTag,
+    addMultipleTags,
+    deleteTagFromContact,
+    getTagUsageCount,
+    deleteTag
 }
+
+
+
+/* Notes for contacts controller: 
+    
+Export/Import: Export contacts to CSV/JSON
+               Import contacts from external sources    
+*/
