@@ -1,5 +1,5 @@
 import prisma from "../db/db.config.js";
-
+import {Parser as CsvParser} from "json2csv";
 // add a contact
 const addContact = async(req, res)=>{
     
@@ -226,7 +226,7 @@ const searchContact = async(req,res)=>{
     }
 }
 
-// update contact details - pending
+// update contact details
 const updateContact = async(req,res)=>{
     const {contactId,firstName, lastName, email, phone, address, company, jobRole, customFields} = req.body;
     
@@ -607,6 +607,55 @@ const deleteTag = async(req,res)=>{
     }
 }
 
+// export contact details of a user
+const exportContacts = async(req,res)=>{
+    try {   
+    const contacts = await prisma.contact.findMany({
+        where:{
+            userId: req.user.id
+        },
+        select:{
+            id: true,
+        firstName: true, 
+        lastName: true, 
+        email: true, 
+        phone: true, 
+        address: true, 
+        company: true, 
+        jobRole: true
+        }
+    });
+    if(contacts.length===0){
+        return res.status(400).json({
+            message: "You do not have contacts in your contact list or you don't have permission to access contacts"
+        });
+    }
+    const contactFields = [
+    {label: 'ID', value:'id'},
+    {label: 'FirstName', value: 'firstName'}, 
+    {label: 'LastName', value: 'lastName'}, 
+    {label: 'Email', value: 'email'}, 
+    {label: 'Phone', value: 'phone'}, 
+    {label: 'Address', value: 'address'}, 
+    {label: 'Company', value: 'company'}, 
+    {label: 'JobRole', value: 'jobRole'}
+];
+    
+
+    const json2csv = new CsvParser({contactFields}); // organizes columns in csv file with respect to contactFields
+    const csvData = json2csv.parse(contacts); // extract values from contacts array in accordance to contactFields columns and store in csvData
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8'); //utf-8 supports different languages and prevent characters from appearing as "�" or "?" in exported files
+    res.setHeader('Content-Disposition','attachment; filename="contacts.csv"');
+    res.status(200).send(csvData);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message:"Something went wrong while exporting contact data."
+        });
+        }   
+
+}
 
 
 export {
@@ -620,13 +669,14 @@ export {
     addMultipleTags,
     deleteTagFromContact,
     getTagUsageCount,
-    deleteTag
+    deleteTag,
+    exportContacts
 }
 
 
 
 /* Notes for contacts controller: 
-    
-Export/Import: Export contacts to CSV/JSON
-               Import contacts from external sources    
+Preemium feature ->  
+Export/Import: [*]Export contacts to CSV/JSON
+[]Import contacts from external sources    
 */
