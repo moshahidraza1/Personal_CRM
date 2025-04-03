@@ -107,7 +107,7 @@ const getContactById = async(req,res)=>{
 
 }
 
-// get contacts based on input/filters with pagination
+// get contacts based on input/filters with pagination - **TODO**: add filter for customFields
 const searchContact = async(req,res)=>{
     const {searchTerm, tagsArray, matchType = 'any',page = 1, limit = 10,sortBy = 'updatedAt', order = 'desc'} = req.params;
     try {
@@ -233,7 +233,8 @@ const updateContact = async(req,res)=>{
     try{
         const contact = await prisma.contact.findFirst({
             where:{
-                id:contactId
+                id:contactId,
+                userId: req.user.id
             }
         });
 
@@ -244,7 +245,8 @@ const updateContact = async(req,res)=>{
         }
         await prisma.contact.update({
             where:{
-                id:contactId
+                id:contactId,
+                userId: req.user.id
             },
             data:{
                 firstName,
@@ -513,7 +515,25 @@ const deleteTagFromContact = async(req, res)=>{
 
     try {
         const userId = req.user.id;
-        
+        // verify the contact is present in user's contactList
+
+        const contact = await prisma.contact.findFirst({
+            where:{
+                id: parseInt(contactId),
+                userId : userId
+            },
+            select:{
+                id: true,
+                firstName:true,
+                lastName: true,
+                company:true
+            }
+        });
+        if(!contact){
+            return res.status(404).json({
+                message: "Contact not present in your contact list"
+            });
+        }
         const tagId = await getTagId(tagName,userId);
 
         const isContactTag = await prisma.contactTag.findFirst({
