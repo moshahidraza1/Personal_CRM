@@ -81,8 +81,7 @@ router.get("/get-contact-by-id", validateRequest([
 
 // updateContact
 router.patch("/update-contact", validateRequest([
-    // contactId,firstName, lastName, email, phone, address, company, jobRole, customFields
-
+   
     body('contactId').trim().escape().isNumeric().notEmpty().withMessage("Contact Id should be a number."),
     ...['firstName','lastName', 'address', 'company', 'jobRole'].map(field => body(field).optional().trim().escape().withMessage(`${field} should be a string`)),
 
@@ -97,6 +96,10 @@ router.patch("/update-contact", validateRequest([
 ]), updateContact);
 
 // deleteContact
+router.delete("/delete-contact", validateRequest([
+    body('contactId').trim().escape().isNumeric().notEmpty().withMessage("Contact Id should be a number.")
+]), deleteContact);
+
 // deleteMultipleContacts
 // addTag
 // addMultipleTags
