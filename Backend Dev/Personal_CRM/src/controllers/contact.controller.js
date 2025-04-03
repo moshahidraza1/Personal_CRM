@@ -565,6 +565,75 @@ const deleteTagFromContact = async(req, res)=>{
     }
 }
 
+// delete multiple tag from multiple contacts
+const deleteMultipleTagsFromContacts = async(req,res)=>{
+    const {contactIds, tags} = req.body;
+    const userId = req.user.id;
+
+    if(!Array.isArray(contactIds) || contactIds.length===0){
+        return res.status(400).json({
+            message:"Please provide an array of contact IDs"
+        });
+    }
+
+    if(!Array.isArray(tags) || tags.length === 0){
+        return res.status(400).json({
+            message: "Please provide an array of tags to remove"
+        });
+    }
+    try {
+        
+        const parsedIds = contactIds.map(id=>parseInt(id));
+
+        const contactCount = await prisma.contact.count({
+            where: {
+                id: {in: parsedIds},
+                userId: userId
+            }
+        });
+
+        if(contactCount != parsedIds.length){
+            return res.status(403).json({
+                message:"One more contacts not found"
+            });
+        }
+
+        const tagRecords = await prisma.tag.findMany({
+            where:{
+                name: {in: tags},
+                userId: userId
+            },
+            select: {id:true}
+        });
+
+        if(tagRecords.length===0 || tagRecords.length != tags.length){
+            return res.status(403).json({
+                message: "One or more tag was not found."
+            });
+        }
+
+        const tagIds = tagRecords.map(tag => tag.id);
+
+        const result = await prisma.contactTag.deleteMany({
+            where:{
+                tagId: {in: tagIds},
+                contactId: {in: parsedIds}
+            }
+        });
+
+        res.status(200).json({
+            message:`Successfully removed ${tags.length} tags from ${contactIds.length} contacts`,
+            deletedAssociations: result.count
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Something went wrong while deleting multiple contacts from contacts"
+        });
+    }
+}
+
 // get Tag usage count
 const getTagUsageCount = async(req,res)=>{
     const {tagName} = req.body;
@@ -688,6 +757,7 @@ export {
     addTag,
     addMultipleTags,
     deleteTagFromContact,
+    deleteMultipleTagsFromContacts,
     getTagUsageCount,
     deleteTag,
     exportContacts
