@@ -80,6 +80,22 @@ router.get("/get-contact-by-id", validateRequest([
 // searchContact - customField filter pending
 
 // updateContact
+router.patch("/update-contact", validateRequest([
+    // contactId,firstName, lastName, email, phone, address, company, jobRole, customFields
+
+    body('contactId').trim().escape().isNumeric().notEmpty().withMessage("Contact Id should be a number."),
+    ...['firstName','lastName', 'address', 'company', 'jobRole'].map(field => body(field).optional().trim().escape().withMessage(`${field} should be a string`)),
+
+    body('email').optional().trim().escape().isEmail().withMessage("Email should be in correct format"),
+
+    body('phone').optional().trim().escape().isMobilePhone().withMessage("Phone number should be in correct format"),
+
+    body('customFields').optional().isObject().withMessage('CustomFields should be a valid JSON object').custom(customField_Validation),
+
+    body('tags').optional().isArray().withMessage('tags should be an array of strings').custom(customTag_Validation)
+
+]), updateContact);
+
 // deleteContact
 // deleteMultipleContacts
 // addTag
