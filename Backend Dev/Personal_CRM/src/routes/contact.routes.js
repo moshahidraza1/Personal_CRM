@@ -101,7 +101,19 @@ router.delete("/delete-contact", validateRequest([
 ]), deleteContact);
 
 // deleteMultipleContacts
+router.delete("/delete-multiple-contacts", validateRequest([
+    body('contactIds').isArray({min:1}).withMessage("Contact Ids should be a non-empty Array of numbers").custom(
+        ids => {
+            if(!ids.every(id => Number.isInteger(Number(id)))){
+                throw new Error('All contactIds must be a number')
+            }
+            return true;
+        }
+    )
+]), deleteMultipleContacts);
+
 // addTag
+
 // addMultipleTags
 // deleteTagFromContact
 // getTagUsageCount
