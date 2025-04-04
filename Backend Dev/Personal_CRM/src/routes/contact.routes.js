@@ -9,6 +9,7 @@ import {
     addTag,
     addMultipleTags,
     deleteTagFromContact,
+    deleteMultipleTagsFromContacts,
     getTagUsageCount,
     deleteTag,
     exportContacts
@@ -16,6 +17,7 @@ import {
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import validateRequest from "../middlewares/InputValidator.middleware.js";
 import { body, param, query } from "express-validator";
+import { StandardValidation } from "express-validator/lib/context-items/standard-validation.js";
 
 const router = Router();
 router.use(verifyJWT);
@@ -100,24 +102,56 @@ router.delete("/delete-contact", validateRequest([
     body('contactId').trim().escape().isNumeric().notEmpty().withMessage("Contact Id should be a number.")
 ]), deleteContact);
 
+// custom contactIds validation
+const customContactIds_Validation = (ids) => {
+    if(!ids.every(id => Number.isInteger(Number(id)))){
+        throw new Error('All contactIds must be a number')
+    }
+    return true;
+}
+
 // deleteMultipleContacts
 router.delete("/delete-multiple-contacts", validateRequest([
     body('contactIds').isArray({min:1}).withMessage("Contact Ids should be a non-empty Array of numbers").custom(
-        ids => {
-            if(!ids.every(id => Number.isInteger(Number(id)))){
-                throw new Error('All contactIds must be a number')
-            }
-            return true;
-        }
+        customContactIds_Validation
     )
 ]), deleteMultipleContacts);
 
 // addTag
+router.post("/add-tag", validateRequest([
+    body('tags').isArray({min:1}).withMessage('tags should be an array of strings').custom(customTag_Validation),
+    body('contactId').trim().escape().isNumeric().notEmpty().withMessage('Contact Id should be a number')
+]), addTag);
 
 // addMultipleTags
+router.post("/add-multiple-tags", validateRequest([
+    body('contactIds').isArray({min:1}).withMessage("Contact Ids should be an array with atleast one id").custom(customContactIds_Validation),
+    body('tags').isArray({min:1}).withMessage("tags should be an Array with atleast one tag").custom(customTag_Validation)
+]), addMultipleTags);
+
 // deleteTagFromContact
+router.delete("/delete-tag-from-contact", validateRequest([
+    body('contactId').trim.escape().isNumeric().notEmpty().withMessage('Contact ID should be an integer'),
+    body('tagName').trim().escape().isString().notEmpty().withMessage('Tag Name should be a string.')
+]), deleteTagFromContact);
+
+// deleteMultipleTagsFromContacts
+router.delete("/delete-multiple-tags-from-contacts", validateRequest([
+    body('contactIds').isArray({min: 1}).withMessage('Contact IDs should be an array').custom(customContactIds_Validation),
+    body('tags').isArray({min:1}).withMessage("Tags should be an array").custom(customTag_Validation)
+]), deleteMultipleTagsFromContacts);
+
 // getTagUsageCount
+router.get("/get-tag-usage", validateRequest([
+    param('tagName').trim().escape().isString().notEmpty().withMessage('tag name is required to get usage count')
+]), getTagUsageCount);
+
 // deleteTag
+router.delete("/delete-tag", validateRequest([
+    body('tagName').trim().escape().isString().notEmpty().withMessage('tag name is required to get usage count')
+]), deleteTag);
+
 // exportContacts
+router.get("/export-contacts", exportContacts);
 
 export default router;

@@ -636,7 +636,7 @@ const deleteMultipleTagsFromContacts = async(req,res)=>{
 
 // get Tag usage count
 const getTagUsageCount = async(req,res)=>{
-    const {tagName} = req.body;
+    const {tagName} = req.params;
 
     try {
         const tag = await getTagId(tagName,req.user.id,{

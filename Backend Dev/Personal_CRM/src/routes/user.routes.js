@@ -16,7 +16,7 @@ const router = Router();
 router.post("/register", validateRequest([
     usernameChain(),
     body('firstName').trim().escape().notEmpty().withMessage("firstName should be an string"),
-    body('lastName').trim().escape().notEmpty().withMessage("lastName should be an string"),
+    body('lastName')?.trim().escape().notEmpty().withMessage("lastName should be an string"),
     emailChain(),
     passwordChain(),
 ]),
