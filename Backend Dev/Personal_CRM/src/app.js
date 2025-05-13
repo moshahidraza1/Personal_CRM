@@ -1,6 +1,11 @@
 import express from "express";
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
+import passport from 'passport';
+import { initializeOAuth } from "./middlewares/oauth.middleware.js";
 import healthRouter from "./routes/health.routes.js";
 import testRouter from "./routes/test.routes.js";
+import authRouter from './routes/auth.routes.js';
 import errorHandler from "./middlewares/errorHandler.middleware.js";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -8,12 +13,28 @@ import RateLimitRequestHandler from "express-rate-limit";
 
 const app = express();
 
+app.use(cookieParser());
 // Rate limiting
 const apiLimiter = RateLimitRequestHandler({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
     message: "Too many requests from this IP, please try again after an hour",
 });
+
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie:{
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 10*60*1000
+    }
+}));
+
+// Wire up passport strategies
+initializeOAuth(app);
+
 app.use("/user/", apiLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -26,7 +47,10 @@ app.use("/api/v1/test", testRouter);
 
 //user routes
 import userRouter from "./routes/user.routes.js";
+import contactRouter from "./routes/contact.routes.js";
 app.use("/api/v1/user", userRouter);
-
+//Mount OAuth routes
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/contacts', contactRouter);
 
 export {app};

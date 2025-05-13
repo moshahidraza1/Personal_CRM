@@ -10,17 +10,15 @@ datasource db {
 model User {
   id                       Int       @id @default(autoincrement())
   email                    String    @unique
-  password                 String
+  password                 String?
   createdAt                DateTime  @default(now())
   lastName                 String?
   username                 String    @unique
   firstName                String
-  accessToken              String?
   avatar                   String?
   emailVerified            Boolean   @default(false)
   isActive                 Boolean   @default(true)
   lastLoginAt              DateTime?
-  refreshToken             String?
   role                     Role      @default(FREE)
   updatedAt                DateTime? @updatedAt
   verificationCode         String?
@@ -29,6 +27,22 @@ model User {
   passwordResetCodeExpires DateTime?
   contacts                 Contact[]
   tags                     Tag[]
+  oauthAccounts            OAuthAccount[]
+}
+
+model OAuthAccount{
+  id Int @id @default(autoincrement())
+  provider String
+  providerUserId String
+  accessToken String?
+  refreshToken String?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
 }
 
 model Contact {
