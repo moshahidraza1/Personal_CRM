@@ -29,6 +29,7 @@ model User {
   tags                     Tag[]
   oauthAccounts            OAuthAccount[]
   notes                    Note[]
+  interactions Interaction[]
 }
 
 model OAuthAccount{
@@ -56,6 +57,7 @@ model Contact {
   company       String?
   jobRole       String?
   notes         Note[]
+  interactions  Interaction[]
   customFields  Json?
   lastContacted DateTime?
   createdAt     DateTime
@@ -100,6 +102,23 @@ model Note{
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([contactId])
   @@index([userId])
+}
+
+model Interaction {
+   id Int @id @default(autoincrement())
+   contactId Int
+   userId Int
+   type String
+   occuredAt DateTime
+   notes String? @db.Text()
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   @@index([userId])
+   @@index([contactId])
+
 }
 enum Role {
   FREE
