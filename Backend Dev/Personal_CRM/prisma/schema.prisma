@@ -28,6 +28,7 @@ model User {
   contacts                 Contact[]
   tags                     Tag[]
   oauthAccounts            OAuthAccount[]
+  notes                    Note[]
 }
 
 model OAuthAccount{
@@ -54,7 +55,7 @@ model Contact {
   address       String?
   company       String?
   jobRole       String?
-  notes         String?
+  notes         Note[]
   customFields  Json?
   lastContacted DateTime?
   createdAt     DateTime
@@ -86,6 +87,20 @@ model ContactTag {
   @@unique([contactId, tagId])
 }
 
+model Note{
+  id Int @id @default(autoincrement())
+  contactId Int
+  userId Int
+  title String
+  content String @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([contactId])
+  @@index([userId])
+}
 enum Role {
   FREE
   PREMIUM
