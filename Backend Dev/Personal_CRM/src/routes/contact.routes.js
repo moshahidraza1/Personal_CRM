@@ -62,7 +62,7 @@ const customTag_Validation = (tags)=>{
 router.post("/add-contact", validateRequest(
 [
     body('firstName').trim().escape().notEmpty().withMessage("firstName is required,it should be a string"),
-    ...['lastName', 'address', 'company', 'jobRole'].map(field => body(field).optional().trim().escape().withMessage(`${field} should be a string`)),
+    ...['lastName', 'address', 'company', 'jobRole'].map(field => body(field).optional().isString().trim().escape().withMessage(`${field} should be a string`)),
 
     body('email').optional().trim().escape().isEmail().withMessage("Email should be in correct format"),
     body('phone').optional().trim().escape().isMobilePhone().withMessage("Phone number should be in correct format"),
@@ -85,7 +85,7 @@ router.get("/get-contact-by-id", validateRequest([
 router.patch("/update-contact", validateRequest([
    
     body('contactId').trim().escape().isNumeric().notEmpty().withMessage("Contact Id should be a number."),
-    ...['firstName','lastName', 'address', 'company', 'jobRole'].map(field => body(field).optional().trim().escape().withMessage(`${field} should be a string`)),
+    ...['firstName','lastName', 'address', 'company', 'jobRole'].map(field => body(field).optional().isString().trim().escape().withMessage(`${field} should be a string`)),
 
     body('email').optional().trim().escape().isEmail().withMessage("Email should be in correct format"),
 
@@ -131,7 +131,7 @@ router.post("/add-multiple-tags", validateRequest([
 
 // deleteTagFromContact
 router.delete("/delete-tag-from-contact", validateRequest([
-    body('contactId').trim.escape().isNumeric().notEmpty().withMessage('Contact ID should be an integer'),
+    body('contactId').trim().escape().isNumeric().notEmpty().withMessage('Contact ID should be an integer'),
     body('tagName').trim().escape().isString().notEmpty().withMessage('Tag Name should be a string.')
 ]), deleteTagFromContact);
 

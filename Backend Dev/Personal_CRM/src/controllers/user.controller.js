@@ -604,6 +604,7 @@ const userStatus = async(req,res)=>{
 
 
 export {
+    generateAccessAndRefreshToken,
     renewAccessToken,
     createUser,
     resendVerificationCode,

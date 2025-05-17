@@ -1,7 +1,7 @@
 import { Router } from "express";
 import passport from 'passport';
 import { generateOAuthState, verifyOAuthState } from "../middlewares/oauth.middleware.js";
-import {generateAccessAndRefereshToken} from '../controllers/user.controller.js';
+import {generateAccessAndRefreshToken} from '../controllers/user.controller.js';
 import oauthConfig from "../config/oauth.config.js";
 
 const router = Router();
@@ -26,7 +26,7 @@ router.get('/google/callback', (req,res,next) => {
         async(err, user) => {
             if(err || !user) return res.redirect('/login?error=oauth_failed');
 
-            const tokens = await generateAccessAndRefereshToken(user.id);
+            const tokens = await generateAccessAndRefreshToken(user.id);
             setCookies(res, tokens);
 
             return res.redirect('/')
@@ -51,7 +51,7 @@ router.get("/github/callback", (req,res,next)=>{
             if(err||!user){
                 return res.redirect("/login?error=oauth_failed");
             }
-            const tokens = await generateAccessAndRefereshToken(user.id);
+            const tokens = await generateAccessAndRefreshToken(user.id);
             setCookies(res,tokens);
             res.redirect("/");
         }
