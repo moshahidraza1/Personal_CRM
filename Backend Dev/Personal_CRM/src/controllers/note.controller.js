@@ -49,8 +49,12 @@ export const listNotes = async(req, res)=>{
 
 // get note by either noteId || contactId || title
 export const getNote = async(req, res)=>{
-    const {noteId, contactId, title} = req.body;
-
+    const {noteId, contactId, title} = req.param;
+    if(!noteId && !contactId && !title){
+        return res.status(401).json({
+            message: "No parameters passed to filter notes"
+        });
+    }
     try {
         const filters = {};
     
@@ -87,6 +91,11 @@ export const getNote = async(req, res)=>{
 export const updateNote = async(req,res)=>{
     const {noteId, title, content} = req.body;
 
+    if(!noteId || ( !title && !content)){
+        return res.status(401).json({
+            message: "Title or content is missing from request"
+        });
+    }
     try {
         const isNote = await prisma.note.findFirst({
             where:{
