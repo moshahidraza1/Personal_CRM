@@ -5,7 +5,7 @@ const addContact = async(req, res)=>{
     
     const userId = req.user.id;
     try{
-        const {firstName, lastName, email, phone, address, company, jobRole, customFields, tags} = req.body;
+        const {firstName, lastName, email, phone, address, company, jobRole, customFields, tags, lastContacted} = req.body;
 
     const existingContact = await prisma.contact.findFirst({
         where:{
@@ -47,6 +47,7 @@ const addContact = async(req, res)=>{
             address,
             company,
             jobRole,
+            lastContacted,
             customFields,
             user:{
                 connect:{
@@ -228,7 +229,7 @@ const searchContact = async(req,res)=>{
 
 // update contact details
 const updateContact = async(req,res)=>{
-    const {contactId,firstName, lastName, email, phone, address, company, jobRole, customFields} = req.body;
+    const {contactId,firstName, lastName, email, phone, address, company, jobRole, lastContacted ,customFields} = req.body;
     
     try{
         const contact = await prisma.contact.findFirst({
@@ -256,6 +257,7 @@ const updateContact = async(req,res)=>{
                 address, 
                 company, 
                 jobRole, 
+                lastContacted,
                 customFields,
                 updatedAt: Date.now()
             }

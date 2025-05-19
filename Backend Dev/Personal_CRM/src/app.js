@@ -50,6 +50,7 @@ import userRouter from "./routes/user.routes.js";
 import contactRouter from "./routes/contact.routes.js";
 import interactionRouter from "./routes/interaction.routes.js";
 import notesRouter from "./routes/note.routes.js";
+import insightsRouter from "./routes/insights.routes.js";
 
 app.use("/api/v1/user", userRouter);
 //Mount OAuth routes
@@ -57,5 +58,6 @@ app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/contacts', contactRouter);
 app.use('/api/v1/notes', notesRouter);
 app.use('/api/v1/interactions', interactionRouter);
+app.use('/api/v1/insights', insightsRouter);
 
 export {app};

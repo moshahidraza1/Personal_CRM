@@ -62,14 +62,15 @@ const customTag_Validation = (tags)=>{
 router.post("/add-contact", validateRequest(
 [
     body('firstName').trim().escape().notEmpty().withMessage("firstName is required,it should be a string"),
-    ...['lastName', 'address', 'company', 'jobRole'].map(field => body(field).optional().isString().trim().escape().withMessage(`${field} should be a string`)),
+    ...['lastName', 'address', 'company', 'jobRole','lastContacted'].map(field => body(field).optional().isString().trim().escape().withMessage(`${field} should be a string`)),
 
     body('email').optional().trim().escape().isEmail().withMessage("Email should be in correct format"),
     body('phone').optional().trim().escape().isMobilePhone().withMessage("Phone number should be in correct format"),
     body('customFields').optional().isObject().withMessage('CustomFields should be a valid JSON object').custom(customField_Validation),
 
-    body('tags').optional().isArray().withMessage('tags should be an array of strings').custom(customTag_Validation)
-
+    body('tags').optional().isArray().withMessage('tags should be an array of strings').custom(customTag_Validation),
+    
+    body('lastContacted').optional().trim().escape().isEmpty().isDate().withMessage('lastContacted should be a date time value')
 ]
 ),
 addContact);
@@ -93,7 +94,9 @@ router.patch("/update-contact", validateRequest([
 
     body('customFields').optional().isObject().withMessage('CustomFields should be a valid JSON object').custom(customField_Validation),
 
-    body('tags').optional().isArray().withMessage('tags should be an array of strings').custom(customTag_Validation)
+    body('tags').optional().isArray().withMessage('tags should be an array of strings').custom(customTag_Validation),
+
+    body('lastContacted').optional().trim().escape().isEmpty().isDate().withMessage('lastContacted should be a date time value')
 
 ]), updateContact);
 

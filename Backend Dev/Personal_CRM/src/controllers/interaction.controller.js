@@ -21,7 +21,16 @@ const logInteraction = async(req,res)=>{
             contactId, type, occuredAt, notes
            }
         });
-
+        // update lastContacted field of contact schema
+        if(occuredAt){
+            await prisma.contact.update({
+                where:{
+                    id: contactId
+                },
+                data:{
+                    lastContacted: new Date(occuredAt)} 
+            });
+        }
         return res.status(200).json({
             Message: "Successfully added interaction log"
         })
@@ -133,6 +142,16 @@ const updateInteraction = async(req,res)=>{
                 type, occuredAt, notes
             }
         });
+        // update lastContacted field of contact schema
+        if(occuredAt){
+            await prisma.contact.update({
+                where:{
+                    id: contactId
+                },
+                data:{
+                    lastContacted: new Date(occuredAt)} 
+            });
+        }
 
         res.status(200).json({
             message: "Successfully updated interacton log"
