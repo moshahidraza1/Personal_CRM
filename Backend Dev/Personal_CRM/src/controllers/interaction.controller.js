@@ -1,14 +1,4 @@
-import prisma from "../db/db.config";
-
-/*
-id Int @id @default(autoincrement())
-   contactId Int
-   userId Int
-   type String
-   occuredAt DateTime
-   notes String? @db.Text()
-   createdAt DateTime @default(now())
-*/
+import prisma from "../db/db.config.js";
 
 // log interaction
 const logInteraction = async(req,res)=>{

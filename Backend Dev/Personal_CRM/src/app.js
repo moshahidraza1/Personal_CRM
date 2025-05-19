@@ -48,9 +48,14 @@ app.use("/api/v1/test", testRouter);
 //user routes
 import userRouter from "./routes/user.routes.js";
 import contactRouter from "./routes/contact.routes.js";
+import interactionRouter from "./routes/interaction.routes.js";
+import notesRouter from "./routes/note.routes.js";
+
 app.use("/api/v1/user", userRouter);
 //Mount OAuth routes
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/contacts', contactRouter);
+app.use('/api/v1/notes', notesRouter);
+app.use('/api/v1/interactions', interactionRouter);
 
 export {app};
