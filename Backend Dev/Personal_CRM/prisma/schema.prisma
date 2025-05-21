@@ -30,6 +30,7 @@ model User {
   oauthAccounts            OAuthAccount[]
   notes                    Note[]
   interactions Interaction[]
+  subscription Subscription?
 }
 
 model OAuthAccount{
@@ -120,6 +121,35 @@ model Interaction {
    @@index([contactId])
 
 }
+
+model Subscription {
+  id Int @id @default(autoincrement())
+  userId Int @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId String @unique
+  stripeSubscriptionId String @unique
+  currentPeriodStart DateTime
+  currentPeriodEnd DateTime
+  status SubscriptionStatus
+  priceId String
+  cancelAtPeriodEnd Boolean
+  trialEnd DateTime?
+  reminderSent String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  INCOMPLETE
+  CANCELED
+  UNPAID
+  EXPIRED
+}
+
 enum Role {
   FREE
   PREMIUM

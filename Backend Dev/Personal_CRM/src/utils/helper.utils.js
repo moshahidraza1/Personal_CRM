@@ -13,6 +13,13 @@ const generateUsernameFromEmail = async (email)=> {
     return name; 
 }
 
+function getSubscriptionEndDate(date){
+    const now = new Date.now();
+    const diff = new Date(date).getTime() - now.getTime();
+
+  return Math.ceil(diff/24*60*60*1000);
+}
 export{
-    generateUsernameFromEmail
+    generateUsernameFromEmail,
+    getSubscriptionEndDate
 }

@@ -51,6 +51,8 @@ import contactRouter from "./routes/contact.routes.js";
 import interactionRouter from "./routes/interaction.routes.js";
 import notesRouter from "./routes/note.routes.js";
 import insightsRouter from "./routes/insights.routes.js";
+import subscriptionRouter from "./routes/subscription.routes.js";
+import stripeRouter from "./routes/stripe.webhook.routes.js";
 
 app.use("/api/v1/user", userRouter);
 //Mount OAuth routes
@@ -59,5 +61,7 @@ app.use('/api/v1/contacts', contactRouter);
 app.use('/api/v1/notes', notesRouter);
 app.use('/api/v1/interactions', interactionRouter);
 app.use('/api/v1/insights', insightsRouter);
+app.use('/api/v1/subscription', subscriptionRouter);
+app.use('/api/v1/stripe', stripeRouter);
 
 export {app};
