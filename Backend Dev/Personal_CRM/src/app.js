@@ -10,16 +10,30 @@ import errorHandler from "./middlewares/errorHandler.middleware.js";
 import helmet from "helmet";
 import morgan from "morgan";
 import RateLimitRequestHandler from "express-rate-limit";
+import cors from "cors";
+import {redisClient,slidingWindowRateLimiter} from "./middlewares/redisRateLimiter.middleware.js";
 
 const app = express();
 
+const corsOptions = {
+    origin:  `${process.env.FRONTEND_URL}`,
+    methods: 'GET,POST, PATCH, DELETE' ,
+    allowedHeaders: ['Content-Type', 'Authorization']
+}
+
+app.use(cors(corsOptions));
 app.use(cookieParser());
+
+await redisClient.connect();
+redisClient.on('error', (err)=>{
+    console.error('Redis connection error: ', err);
+})
+
 // Rate limiting
-const apiLimiter = RateLimitRequestHandler({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: "Too many requests from this IP, please try again after an hour",
-});
+const apiLimiter = slidingWindowRateLimiter({
+    windowMs:15*60*1000, 
+    max : 100,
+    keyPrefix : 'rl:'});
 
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -35,13 +49,13 @@ app.use(session({
 // Wire up passport strategies
 initializeOAuth(app);
 
-app.use("/user/", apiLimiter);
+// app.use("/user/", apiLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(errorHandler); // for handling errors
 app.use(morgan('dev')); // Logs requests like "GET /api/health 200 12ms"
 app.use(helmet()); // for security
-app.use("/api/v1/health", healthRouter);
+app.use("/api/v1/health", apiLimiter, healthRouter);
 
 app.use("/api/v1/test", testRouter);
 
@@ -54,14 +68,14 @@ import insightsRouter from "./routes/insights.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import stripeRouter from "./routes/stripe.webhook.routes.js";
 
-app.use("/api/v1/user", userRouter);
+app.use("/api/v1/user", apiLimiter, userRouter);
 //Mount OAuth routes
-app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/contacts', contactRouter);
-app.use('/api/v1/notes', notesRouter);
-app.use('/api/v1/interactions', interactionRouter);
-app.use('/api/v1/insights', insightsRouter);
-app.use('/api/v1/subscription', subscriptionRouter);
-app.use('/api/v1/stripe', stripeRouter);
+app.use('/api/v1/auth', apiLimiter, authRouter);
+app.use('/api/v1/contacts', apiLimiter,contactRouter);
+app.use('/api/v1/notes', apiLimiter,   notesRouter);
+app.use('/api/v1/interactions', apiLimiter, interactionRouter);
+app.use('/api/v1/insights',  apiLimiter, insightsRouter);
+app.use('/api/v1/subscription', apiLimiter, subscriptionRouter);
+app.use('/api/v1/stripe', apiLimiter, stripeRouter);
 
 export {app};
