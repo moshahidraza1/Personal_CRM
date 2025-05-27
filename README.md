@@ -64,7 +64,61 @@ Provides user authentication (email/password + OAuth), session management, rate-
 
 ### System Architecture Overview
 
-![alt text](src/assets/image.png)
+```mermaid
+flowchart TD
+    subgraph Clients
+        A1[Web App]
+        A2[Mobile App]
+        A3[API Consumers]
+    end
+
+    subgraph APIGateway["API Gateway Layer"]
+        B1[CORS]
+        B2[Rate Limiting]
+        B3[Security Headers]
+        B4[Morgan Logs]
+        B5[Input Validation]
+        B6[Error Handling]
+    end
+
+    subgraph AuthLayer["Authentication Layer"]
+        C1[JWT Tokens]
+        C2[OAuth 2.0<br/>-Google, GitHub]
+        C3[Session Management]
+        C4[Email Verification]
+        C5[Refresh Tokens]
+    end
+
+    subgraph BusinessLogic["Business Logic Layer"]
+        D1[Users Controller]
+        D2[Contacts Controller]
+        D3[Interactions Controller]
+        D4[Insights Controller]
+        D5[Notes Controller]
+        D6[Tags Controller]
+        D7[Subscription Controller]
+        D8[Stripe Webhooks]
+    end
+
+    subgraph DataAccess["Data Access Layer"]
+        E1[Prisma ORM]
+        E2[PostgreSQL]
+    end
+
+    subgraph Infra["Infrastructure"]
+        F1[Redis<br/>Rate Limiter/Cache]
+        F2[Stripe<br/>Payments]
+    end
+
+    %% Connections
+    A1 & A2 & A3 --> APIGateway
+    APIGateway --> AuthLayer
+    AuthLayer --> BusinessLogic
+    BusinessLogic --> DataAccess
+    DataAccess --> E2
+    DataAccess --> F1
+    BusinessLogic --> F2
+```
 
 ## Performance
 
