@@ -12,7 +12,7 @@ import morgan from "morgan";
 import RateLimitRequestHandler from "express-rate-limit";
 import cors from "cors";
 import {redisClient,slidingWindowRateLimiter} from "./middlewares/redisRateLimiter.middleware.js";
-
+import prisma from "./db/db.config.js";
 const app = express();
 
 const corsOptions = {
@@ -28,6 +28,7 @@ await redisClient.connect();
 redisClient.on('error', (err)=>{
     console.error('Redis connection error: ', err);
 })
+
 
 // Rate limiting
 const apiLimiter = slidingWindowRateLimiter({
@@ -56,6 +57,27 @@ app.use(errorHandler); // for handling errors
 app.use(morgan('dev')); // Logs requests like "GET /api/health 200 12ms"
 app.use(helmet()); // for security
 app.use("/api/v1/health", apiLimiter, healthRouter);
+
+// check DB connection
+app.get('/api/v1/ready',
+   async(req,res)=>{
+    try {
+     await prisma.$queryRaw `SELECT 1`;
+    res.status(200).json({
+        status: 'ready',
+        database: 'connected',
+        timestamp: new Date().toISOString()
+    });
+
+   } catch (error) {
+        console.error(error);
+        res.status(503).json({
+            status: 'not ready',
+            database: 'disconnected',
+            timestamp: new Date().toISOString
+        });
+   }}
+);
 
 app.use("/api/v1/test", testRouter);
 

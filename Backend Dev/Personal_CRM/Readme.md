@@ -7,8 +7,20 @@ Provides user authentication (email/password + OAuth), session management, rate-
 
 ## Table of Contents
 
-- [Features](#features)  
+- [Key Features](#features)  
 - [Tech Stack](#tech-stack)  
+- [Architechture](#architecture)
+- [System Components](#system-components)
+- [System Architecture Overview](#system-architecture-overview)
+- [Performance](#performance)
+- [Rate Limiting](#rate-limiting)
+- [Database Optimization](#database-optimization)
+- [Monitoring](#monitoring)
+- [Health Checks](#health-checks)
+- [Logging](#logging)
+- [Security](#security)
+- [Authentication Flow](#authentication-flow)
+- [Data Protection](#data-protection)
 - [Prerequisites](#prerequisites)  
 - [Installation](#installation)  
 - [Environment Variables](#environment-variables)  
@@ -19,19 +31,13 @@ Provides user authentication (email/password + OAuth), session management, rate-
 
 ---
 
-## Features
-
-- User registration, email verification, login/logout, password reset  
-- OAuth 2.0 via Google & GitHub  
-- JWT-based authentication & refresh tokens  
-- Rate limiting, security headers with Helmet, request logging with Morgan  
-- Full CRUD on:
-  - **Contacts**: add, update, delete, search, bulk delete, CSV export  
-  - **Notes**: attach free-text notes to contacts  
-  - **Interactions**: log, list, filter, update, delete  
-  - **Tags**: assign or remove tags to/from contacts, usage count  
-- Input validation with express-validator  
-- Centralized error handling  
+### Key Features
+  
+- **Contact Management**: Full CRUD with custom fields, tags, and relationships
+- **Interaction Tracking**: Log and analyze customer touchpoints
+- **Analytics Dashboard**: Insights on contact engagement and trends
+- **Subscription Management**: Freemium model with Stripe integration
+- **Security**: Rate limiting, input validation, OAuth protection  
 
 ---
 
@@ -44,6 +50,104 @@ Provides user authentication (email/password + OAuth), session management, rate-
 - Docker & docker-compose (optional)  
 
 ---
+
+## Architecture
+
+### System Components
+- **API Server**: Express.js with rate limiting and security middleware
+- **Database**: PostgreSQL with Prisma ORM
+- **RateLimit**: Redis for rate limiting
+- **Payments**: Stripe integration for subscription management
+- **Authentication**: JWT + OAuth 2.0 (Google, GitHub)
+
+### System Architecture Overview
+┌─────────────────────────────────────────────────────────────┐
+│                    Client Applications                      │
+│              (Web, Mobile, API Consumers)                   │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ HTTP/HTTPS
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 API Gateway Layer                           │
+│  • CORS         • Rate Limiting    • Security Headers       │
+│  • Morgan Logs  • Input Validation • Error Handling         │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                Authentication Layer                         │
+│  • JWT Tokens   • OAuth 2.0       • Session Management      │
+│  • Refresh      • Google/GitHub   • Email Verification      │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Business Logic Layer                        │
+│  ┌─────────────┬─────────────┬─────────────┬─────────────┐  │
+│  │   Users     │  Contacts   │Interactions │ Insights    │  │
+│  │ Controller  │ Controller  │ Controller  │ Controller  │  │
+│  └─────────────┴─────────────┴─────────────┴─────────────┘  │
+│  ┌─────────────┬─────────────┬─────────────┬─────────────┐  │
+│  │    Notes    │    Tags     │Subscription │   Stripe    │  │
+│  │ Controller  │ Controller  │ Controller  │ Webhooks    │  │
+│  └─────────────┴─────────────┴─────────────┴─────────────┘  │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Data Access Layer                          │
+│              Prisma ORM + PostgreSQL                        │
+│  • User Management    • Contact Relations                   │
+│  • OAuth Accounts     • Interaction Tracking                │
+│  • Subscription Data  • Audit Trails                        │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ PostgreSQL  │ │    Redis    │ │   Stripe    │
+│  Database   │ │Rate Limiter │ │  Payments   │
+│             │ │   Cache     │ │             │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+
+## Performance
+
+### Rate Limiting
+- Sliding window algorithm with Redis backend
+- 100 requests per 15 minutes per IP/user
+- Graceful degradation on Redis failure
+
+### Database Optimization
+- Indexed queries for user-specific data
+- Efficient pagination and search
+- Cascading deletes for data consistency
+
+## Monitoring
+
+### Health Checks
+- `GET /api/v1/health` - Service status
+- `GET /api/v1/ready` - Database connectivity
+
+### Logging
+- Request/response logging with Morgan
+- Error tracking and stack traces
+- Rate limiting statistics
+
+## Security
+
+### Authentication Flow
+1. User registration with email verification
+2. JWT token generation (15min access + 7d refresh)
+3. OAuth 2.0 integration with CSRF protection
+4. Session management for OAuth flows
+
+### Data Protection
+- Password hashing with bcrypt
+- Input sanitization and validation
+- SQL injection prevention via Prisma
+- XSS protection with Helmet
+
 
 ## Prerequisites
 
@@ -93,6 +197,11 @@ GOOGLE_CLIENT_SECRET=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 BASE_URL=http://localhost:3000
+
+NODE_ENV=production
+REDIS_URL=redis://...
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ---
