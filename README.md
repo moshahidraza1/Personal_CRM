@@ -60,56 +60,11 @@ Provides user authentication (email/password + OAuth), session management, rate-
 - **Payments**: Stripe integration for subscription management
 - **Authentication**: JWT + OAuth 2.0 (Google, GitHub)
 
-### System Architecture Overview
-┌─────────────────────────────────────────────────────────────┐
-│                    Client Applications                      │
-│              (Web, Mobile, API Consumers)                   │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ HTTP/HTTPS
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 API Gateway Layer                           │
-│  • CORS         • Rate Limiting    • Security Headers       │
-│  • Morgan Logs  • Input Validation • Error Handling         │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                Authentication Layer                         │
-│  • JWT Tokens   • OAuth 2.0       • Session Management      │
-│  • Refresh      • Google/GitHub   • Email Verification      │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Business Logic Layer                        │
-│  ┌─────────────┬─────────────┬─────────────┬─────────────┐  │
-│  │   Users     │  Contacts   │Interactions │ Insights    │  │
-│  │ Controller  │ Controller  │ Controller  │ Controller  │  │
-│  └─────────────┴─────────────┴─────────────┴─────────────┘  │
-│  ┌─────────────┬─────────────┬─────────────┬─────────────┐  │
-│  │    Notes    │    Tags     │Subscription │   Stripe    │  │
-│  │ Controller  │ Controller  │ Controller  │ Webhooks    │  │
-│  └─────────────┴─────────────┴─────────────┴─────────────┘  │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Data Access Layer                          │
-│              Prisma ORM + PostgreSQL                        │
-│  • User Management    • Contact Relations                   │
-│  • OAuth Accounts     • Interaction Tracking                │
-│  • Subscription Data  • Audit Trails                        │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-        ┌─────────────┼─────────────┐
-        ▼             ▼             ▼
-┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│ PostgreSQL  │ │    Redis    │ │   Stripe    │
-│  Database   │ │Rate Limiter │ │  Payments   │
-│             │ │   Cache     │ │             │
-└─────────────┘ └─────────────┘ └─────────────┘
 
+
+### System Architecture Overview
+
+![alt text](src/assets/image.png)
 
 ## Performance
 
