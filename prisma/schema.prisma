@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                       Int       @id @default(autoincrement())
+  email                    String    @unique
+  password                 String?
+  createdAt                DateTime  @default(now())
+  lastName                 String?
+  username                 String    @unique
+  firstName                String
+  avatar                   String?
+  emailVerified            Boolean   @default(false)
+  isActive                 Boolean   @default(true)
+  lastLoginAt              DateTime?
+  role                     Role      @default(FREE)
+  updatedAt                DateTime? @updatedAt
+  verificationCode         String?
+  verificationCodeExpires  DateTime?
+  passwordResetCode        String?
+  passwordResetCodeExpires DateTime?
+  contacts                 Contact[]
+  tags                     Tag[]
+  oauthAccounts            OAuthAccount[]
+  notes                    Note[]
+  interactions Interaction[]
+  subscription Subscription?
+}
+
+model OAuthAccount{
+  id Int @id @default(autoincrement())
+  provider String
+  providerUserId String
+  accessToken String?
+  refreshToken String?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model Contact {
+  id            Int          @id @default(autoincrement())
+  firstName     String
+  lastName      String?
+  email         String?      @unique
+  phone         String?
+  address       String?
+  company       String?
+  jobRole       String?
+  notes         Note[]
+  interactions  Interaction[]
+  customFields  Json?
+  lastContacted DateTime?
+  createdAt     DateTime
+  updatedAt     DateTime?
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id])
+  tags          ContactTag[]
+
+  @@index([userId])
+}
+
+model Tag {
+  id       Int          @id @default(autoincrement())
+  name     String       @unique
+  userId   Int
+  contacts ContactTag[]
+  user     User         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model ContactTag {
+  id        Int     @id @default(autoincrement())
+  contactId Int
+  tagId     Int
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, tagId])
+}
+
+model Note{
+  id Int @id @default(autoincrement())
+  contactId Int
+  userId Int
+  title String
+  content String @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([contactId])
+  @@index([userId])
+}
+
+model Interaction {
+   id Int @id @default(autoincrement())
+   contactId Int
+   userId Int
+   type String
+   occuredAt DateTime
+   notes String? @db.Text()
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   @@index([userId])
+   @@index([contactId])
+
+}
+
+model Subscription {
+  id Int @id @default(autoincrement())
+  userId Int @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId String @unique
+  stripeSubscriptionId String @unique
+  currentPeriodStart DateTime
+  currentPeriodEnd DateTime
+  status SubscriptionStatus
+  priceId String
+  cancelAtPeriodEnd Boolean
+  trialEnd DateTime?
+  reminderSent String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  INCOMPLETE
+  CANCELED
+  UNPAID
+  EXPIRED
+}
+
+enum Role {
+  FREE
+  PREMIUM
+  ADMIN
+}
