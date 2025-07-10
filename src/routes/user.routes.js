@@ -56,12 +56,12 @@ updatePassword);
 
 // forgot password
 router.post("/forgotPassword", validateRequest([
-    emailChain
+    emailChain()
 ]), forgotPassword);
 
 // reset password
 router.post("/resetPassword", validateRequest([
-    emailChain,
+    emailChain(),
     body('resetCode').trim().escape().notEmpty().withMessage("Missing password reset code"),
     body('newPassword').trim().escape().isLength({min:8}).withMessage("Minimum 8 characters are required for password")
 ]), verifyJWT, resetPassword);

@@ -61,7 +61,7 @@ model Contact {
   interactions  Interaction[]
   customFields  Json?
   lastContacted DateTime?
-  createdAt     DateTime
+  createdAt     DateTime @default(now())
   updatedAt     DateTime?
   userId        Int
   user          User         @relation(fields: [userId], references: [id])
@@ -72,11 +72,11 @@ model Contact {
 
 model Tag {
   id       Int          @id @default(autoincrement())
-  name     String       @unique
+  name     String       
   userId   Int
   contacts ContactTag[]
   user     User         @relation(fields: [userId], references: [id])
-
+  @@unique([name, userId])
   @@index([userId])
 }
 

@@ -28,18 +28,21 @@ const addContact = async(req, res)=>{
                 tag:{
                     connectOrCreate:{
                         where:{
-                            name: tagName
+                            name_userId:{
+                               name: tagName,
+                               userId
+                            } 
                         },
                         create:{
-                            name: tagName
+                               name: tagName,
+                               userId
                         }
                     }
                 }
             }))
         };
     }
-    await prisma.contact.create({
-        data:{
+    const contactData = {
             firstName,
             lastName,
             email,
@@ -54,10 +57,16 @@ const addContact = async(req, res)=>{
                     id: userId
                 }
             },
-            tags: tagsData
         }
-
-    });
+        if(tags && Array.isArray(tags) && tags.length>0){
+            contactData.tags = tagsData;
+        }
+            
+        await prisma.contact.create({
+        data:
+            contactData
+        });
+        
 
         return res.status(200).json({
             message: "Contact successfully added."
@@ -234,7 +243,7 @@ const updateContact = async(req,res)=>{
     try{
         const contact = await prisma.contact.findFirst({
             where:{
-                id:contactId,
+                id:parseInt(contactId),
                 userId: req.user.id
             }
         });
@@ -246,7 +255,7 @@ const updateContact = async(req,res)=>{
         }
         await prisma.contact.update({
             where:{
-                id:contactId,
+                id:parseInt(contactId),
                 userId: req.user.id
             },
             data:{
@@ -259,7 +268,7 @@ const updateContact = async(req,res)=>{
                 jobRole, 
                 lastContacted,
                 customFields,
-                updatedAt: Date.now()
+                updatedAt: new Date()
             }
         });
 
@@ -358,13 +367,13 @@ const deleteMultipleContacts = async(req,res)=>{
 const addTag = async(req,res)=>{
 
     const {tags, contactId} = req.body;
-
+    const userId = req.user.id;
     try {
-    
+        
         const contact = await prisma.contact.findFirst({
             where:{
-                id: parseInt(contactId),// correct this
-                userId: req.user.id
+                id: parseInt(contactId),
+                userId
             },
         });
     if(!contact){
@@ -372,18 +381,41 @@ const addTag = async(req,res)=>{
             message:"Contact not found in user contacts"
         })
     }
+    // previously present tags
+    const tagRecords = await prisma.tag.findMany({
+        where:{
+            name:{in:tags},
+            userId
+        }
+    });
+
+    // already linked contacts
+    const existingCOntactTags = await prisma.contactTag.findMany({
+        where:{
+            contactId: contact.id,
+            tagId: {in: tagRecords.map(tag=> tag.id)}
+        }
+    });
+
+    // set of existing linked tags to avoid duplicates
+    const alreadyLinkedTagIds = new Set(existingCOntactTags.map(ct=>ct.tagId));
+
+    // filter out tags that are already linked
+    const newTagNames = tags.filter(tagName => !tagRecords.some(tag => tag.name === tagName && alreadyLinkedTagIds.has(tag.id)));
 
     let tagsData = {};
-    if(tags && Array.isArray(tags) && tags.length > 0){
+    if(newTagNames.length > 0){
         tagsData = {
-            create: tags.map(tagName => ({
+            create: newTagNames.map(tagName => ({
                 tag:{
                     connectOrCreate:{
                         where:{
-                            name: tagName
+                            name_userId:{name: tagName,
+                            userId}
                         },
                         create:{
-                            name: tagName
+                            name: tagName,
+                            userId
                         }
                     }
                 }
@@ -391,6 +423,8 @@ const addTag = async(req,res)=>{
         };
     }
 
+    // update if there are unlinked tags
+    if(newTagNames.length>0){
     const updatedContactTag = await prisma.contact.update({
         where:{
             id: parseInt(contactId),
@@ -398,14 +432,27 @@ const addTag = async(req,res)=>{
         },
         data:{
             tags: tagsData,
-            updatedAt: Date.now()
+            updatedAt: new Date()
+            },
+            include :{
+            tags:{
+                include:{
+                    tag: true
+                }
             }
         }
+        },
+        
     );
     return res.status(201).json({
         message: "Success! Tags added to contact",
         data: updatedContactTag
     });
+}else{
+    return res.status(200).json({
+        message: "No new tags to add. All tags are already linked to contact"
+    });
+}
 } catch (error) {
         console.error(error);
         return res.status(500).json({
@@ -425,7 +472,7 @@ const addMultipleTags = async(req,res)=>{
         });
     }
 
-    if(!Array.isArray(tags) || tags.lenth ===0){
+    if(!Array.isArray(tags) || tags.length ===0){
         return res.status(400).json({
             message:"Pleae provide array of tags to be added to contacts."
         });
@@ -448,22 +495,46 @@ const addMultipleTags = async(req,res)=>{
             });
         }
 
-        // tag connection for each contact
+        // find all the existing tags 
+        const tagRecords = await prisma.tag.findMany({
+            where:{
+                name: {in: tags},
+                userId: req.user.id
+            }
+        });
 
-        const operations = parsedIds.map(contactId => {
-            return prisma.contact.update({
+        // tag connection for each contact
+        const operations = [];
+        for(const  contactId of parsedIds ){
+           // finding already linked tags for each contact
+           const existingContactTags = await prisma.contactTag.findMany({
+            where:{
+                contactId,
+                tagId:{in: tagRecords.map(tag=>tag.id)}
+            }
+           });
+           const alreadyLinkedTagIds = new Set(existingContactTags.map(ct=>ct.tagId));
+
+           // filtering not linked tags
+           const newTags = tags.filter(tagName=>{
+            const tag  = tagRecords.find(t=> t.name === tagName);
+            return tag? !alreadyLinkedTagIds.has(tag.id): true;
+           });
+
+            operations.push( prisma.contact.update({
                 where:{
                     id: contactId, // each contact will be processed one by one
                 },
                 data:{
                     tags:{  // tags is a field inside contacts
-                        create: tags.map(tagName => ({  // for every tagName, nested prisma oper. to create a new entry
+                        create: newTags.map(tagName => ({  // for every tagName, nested prisma oper. to create a new entry
                             tag:{ // tag is a schema
                                 connectOrCreate: { // if already exists it will not create a duplicate entry
                                     where:{
-                                        name: tagName // tag entry identifier(unique)
+                                        name_userId:{ name:tagName, // tag entry identifier(unique)
+                                        userId: req.user.id}
                                     },
-                                    data:{
+                                    create:{
                                         name: tagName,
                                         userId: req.user.id
                                     }
@@ -473,8 +544,8 @@ const addMultipleTags = async(req,res)=>{
                     },
                     updatedAt: new Date()
                 }
-            });
-        });
+            })); 
+        };
 
 
         await prisma.$transaction(operations); // allSettled is not because we want atomic operation, tags are used for filtering contacts, partial updates may cause inconsistancy in db.
@@ -498,7 +569,10 @@ const getTagId = async(tagName, userId,options={})=>{
     try {
         const tag =  await prisma.tag.findFirst({
             where:{
-                name: tagName,
+                name: {
+                    equals: `${tagName}`,
+                    mode: 'insensitive'
+                },
                 userId
             },
             ...options
@@ -538,10 +612,12 @@ const deleteTagFromContact = async(req, res)=>{
         }
         const tagId = await getTagId(tagName,userId);
 
-        const isContactTag = await prisma.contactTag.findFirst({
+        const isContactTag = await prisma.contactTag.findUnique({
             where:{
-                tagId,
-                contactId
+               contactId_tagId:{ 
+                tagId:tagId.id,
+                contactId: parseInt(contactId),
+                }
             }
         });
         
@@ -552,12 +628,15 @@ const deleteTagFromContact = async(req, res)=>{
         }
         await prisma.contactTag.delete({
             where:{
-                id: isContactTag.id
+                contactId_tagId:{ 
+                tagId:tagId.id,
+                contactId: parseInt(contactId),
+                }
             }
         });
 
         return res.status(200).json({
-            message:`Successfully removed ${tagName} from ${contactName}`
+            message:`Successfully removed ${tagName} from ${contact.firstName}`
         });
     } catch (error) {
         console.error(error);
@@ -596,7 +675,7 @@ const deleteMultipleTagsFromContacts = async(req,res)=>{
 
         if(contactCount != parsedIds.length){
             return res.status(403).json({
-                message:"One more contacts not found"
+                message:"One or more contacts not found"
             });
         }
 
@@ -655,10 +734,11 @@ const getTagUsageCount = async(req,res)=>{
                 message:"Tag not found"
             });
         }
+         
         return res.status(200).json({
             message: "Tag usage information",
             data:{
-                tagName,
+                tag: `${tag.name}`,
                 contactCount: tag._count.contacts
             }
         });
@@ -713,14 +793,29 @@ const exportContacts = async(req,res)=>{
         phone: true, 
         address: true, 
         company: true, 
-        jobRole: true
+        jobRole: true,
+        tags: {
+            select:{
+                tag:{
+                    select:{
+                        name:true
+                    }
+                }
+            }
         }
-    });
+    }
+});
     if(contacts.length===0){
         return res.status(400).json({
             message: "You do not have contacts in your contact list or you don't have permission to access contacts"
         });
     }
+
+    const processedContacts = contacts.map(contact =>({
+        ...contact,
+        tags: contact.tags.map(t => t.tag.name).join(', ')
+    }));
+
     const contactFields = [
     {label: 'ID', value:'id'},
     {label: 'FirstName', value: 'firstName'}, 
@@ -729,12 +824,13 @@ const exportContacts = async(req,res)=>{
     {label: 'Phone', value: 'phone'}, 
     {label: 'Address', value: 'address'}, 
     {label: 'Company', value: 'company'}, 
-    {label: 'JobRole', value: 'jobRole'}
+    {label: 'JobRole', value: 'jobRole'},
+    {label: 'Tags', value: 'tags'}
 ];
     
 
     const json2csv = new CsvParser({contactFields}); // organizes columns in csv file with respect to contactFields
-    const csvData = json2csv.parse(contacts); // extract values from contacts array in accordance to contactFields columns and store in csvData
+    const csvData = json2csv.parse(processedContacts); // extract values from contacts array in accordance to contactFields columns and store in csvData
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8'); //utf-8 supports different languages and prevent characters from appearing as "�" or "?" in exported files
     res.setHeader('Content-Disposition','attachment; filename="contacts.csv"');

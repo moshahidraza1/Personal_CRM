@@ -50,11 +50,7 @@ const customTag_Validation = (tags)=>{
         if(!tags.every(tag => typeof tag === 'string')){
             throw new Error('All tags must be strings')
         }
-        else{
-            tags.forEach(element => {
-                element.escape();
-            });
-        }
+        
     }
     return true;
 }
@@ -76,7 +72,7 @@ router.post("/add-contact", validateRequest(
 addContact);
 
 // getContactById
-router.get("/get-contact-by-id", validateRequest([
+router.get("/get-contact-by-id/:contactId", validateRequest([
     param('contactId').trim().escape().isNumeric().notEmpty().withMessage('Contact Id should be a number')
 ]), getContactById);
 
@@ -94,7 +90,7 @@ router.patch("/update-contact", validateRequest([
 
     body('customFields').optional().isObject().withMessage('CustomFields should be a valid JSON object').custom(customField_Validation),
 
-    body('tags').optional().isArray().withMessage('tags should be an array of strings').custom(customTag_Validation),
+    body('tags').optional().isArray().escape().withMessage('tags should be an array of strings').custom(customTag_Validation),
 
     body('lastContacted').optional().trim().escape().isEmpty().isDate().withMessage('lastContacted should be a date time value')
 
@@ -145,7 +141,7 @@ router.delete("/delete-multiple-tags-from-contacts", validateRequest([
 ]), deleteMultipleTagsFromContacts);
 
 // getTagUsageCount
-router.get("/get-tag-usage", validateRequest([
+router.get("/get-tag-usage/:tagName", validateRequest([
     param('tagName').trim().escape().isString().notEmpty().withMessage('tag name is required to get usage count')
 ]), getTagUsageCount);
 

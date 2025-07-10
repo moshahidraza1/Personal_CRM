@@ -15,7 +15,7 @@ function hashToken(token) {
 
 const options = {
     httpOnly:true,
-    secure: true,
+    secure: process.env.NODE_ENV=="production",
     maxAge: 24*60*60*1000
 };
     const generateAccessToken = (user)=>{
@@ -59,15 +59,15 @@ const generateAccessAndRefreshToken = async(userId)=> {
         }
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken(user);
-        await prisma.user.update({
-            where:{
-                id:user.id
-            },
-            data:{
-                accessToken,
-                refreshToken
-            }
-        });
+        // await prisma.user.update({
+        //     where:{
+        //         id:user.id
+        //     },
+        //     data:{
+        //         accessToken,
+        //         refreshToken
+        //     }
+        // });
         return {accessToken, refreshToken};
     } catch (error) {
 
@@ -91,9 +91,9 @@ const renewAccessToken = async(req,res)=>{
 
         // verify refresh token
 
-        try {
+        
             const decode = jwt.verify(token,process.env.REFRESH_TOKEN_SECRET);
-        } catch (err) {
+         if(!decode){
             return res.status(401).json({
                 message: "invalid refresh Token."
             });
@@ -110,7 +110,7 @@ const renewAccessToken = async(req,res)=>{
             })
         }
         // generate new access token
-        const {accessToken, refreshToken} = generateAccessAndRefreshToken(user);
+        const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user.id);
         return res.status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
