@@ -3,15 +3,15 @@ import { createNote, listNotes, getNote, updateNote, deleteNote } from "../contr
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import validateRequest from "../middlewares/InputValidator.middleware.js";
-import { body, param } from "express-validator";
+import { body, param,query } from "express-validator";
 
 const router = Router();
 router.use(verifyJWT);
 // create note
 router.post("/create-note", validateRequest([
-    body('contactId').trim().isEmpty().escape().isNumeric().withMessage("ContactId can't be empty and should be a number"),
-    body('title').trim().escape().isEmpty().isString().withMessage("title should be a string"),
-    body('content').trim().escape().isEmpty().isString().withMessage("Content shoul be a string")
+    body('contactId').trim().notEmpty().escape().isNumeric().withMessage("ContactId can't be empty and should be a number"),
+    body('title').trim().escape().notEmpty().isString().withMessage("title should be a string"),
+    body('content').trim().escape().notEmpty().isString().withMessage("Content shoul be a string")
 ]),
 createNote
 );
@@ -22,11 +22,11 @@ router.get('/list-notes', listNotes);
 // getNote
 router.get('/get-note', 
     validateRequest([
-        param('noteId').optional().trim().escape().isEmpty().isNumeric().withMessage("noteId should be a valid non-empty number"),
+        query('noteId').optional().trim().escape().notEmpty().isNumeric().withMessage("noteId should be a valid non-empty number"),
 
-        param('contactId').optional().trim().escape().isEmpty().isNumeric().withMessage("contactId should be a non-empty number"),
+        query('contactId').optional().trim().escape().notEmpty().isNumeric().withMessage("contactId should be a non-empty number"),
 
-        param('title').optional().trim().escape().isEmpty().isString().withMessage("Title should be a string")
+        query('title').optional().trim().escape().notEmpty().isString().withMessage("Title should be a string")
 
     ]),
     getNote
@@ -34,17 +34,17 @@ router.get('/get-note',
 
 // updateNote
 router.patch('/update-note', validateRequest([
-    body('noteId').trim().escape().isEmpty().isNumeric().withMessage("noteId should be a valid non-empty number"),
+    body('noteId').trim().escape().notEmpty().isNumeric().withMessage("noteId should be a valid non-empty number"),
 
-    body('title').optional().trim().escape().isEmpty().isString().withMessage("Title should be a valid string"),
+    body('title').optional().trim().escape().notEmpty().isString().withMessage("Title should be a valid string"),
 
-    body('content').optional().trim().escape().isEmpty().isString().withMessage("Content should be a valid string")
+    body('content').optional().trim().escape().notEmpty().isString().withMessage("Content should be a valid string")
 ]),
 updateNote)
 
 // delete Note
 router.delete('/delete-note', validateRequest([
-    body('noteId').trim().escape().isEmpty().isNumeric().withMessage("noteId should be a valid nimber")
+    body('noteId').trim().escape().notEmpty().isNumeric().withMessage("noteId should be a valid nimber")
 ]), deleteNote);
 
 export default router;

@@ -7,6 +7,7 @@ const logInteraction = async(req,res)=>{
     try {
         const isContact = await prisma.contact.findUnique({
             where:{
+                id: parseInt(contactId),
                 userId
             }
         });
@@ -18,14 +19,19 @@ const logInteraction = async(req,res)=>{
 
         const interaction = await prisma.interaction.create({
            data: {
-            contactId, type, occuredAt, notes
+            contactId:parseInt(contactId),
+            userId: req.user.id,
+            type,
+            occuredAt: new Date(occuredAt),
+               notes
            }
         });
         // update lastContacted field of contact schema
         if(occuredAt){
             await prisma.contact.update({
                 where:{
-                    id: contactId
+                    id: parseInt(contactId),
+                    userId: req.user.id
                 },
                 data:{
                     lastContacted: new Date(occuredAt)} 
@@ -44,7 +50,7 @@ const logInteraction = async(req,res)=>{
 
 // list interaction
 const listInteractions = async(req,res)=>{
-    userId = req.user.id
+    const userId = req.user.id
     try {
         const items = await prisma.interaction.findMany({
             where:{
@@ -72,7 +78,7 @@ const listInteractions = async(req,res)=>{
 
 // get ineraction
 const getInteraction = async(req,res)=>{
-    const {interactionId, contactId, occuredAt} = req.params;
+    const {interactionId, contactId, occuredAt} = req.query;
     if(!interactionId && !contactId && !occuredAt){
         return res.status(401).json({
             message: "No parameter recieved to filter interactions"
@@ -82,13 +88,20 @@ const getInteraction = async(req,res)=>{
   
     try {
         const filters = {};
-        if(interactionId) filters.id = interactionId;
-        if(contactId) filters.contactId = contactId;
-        if(occuredAt) filters.occuredAt = occuredAt;
+        if(interactionId) filters.id = parseInt(interactionId);
+        if(contactId) filters.contactId = parseInt(contactId);
+        if(occuredAt && /^\d{4}-\d{2}-\d{2}$/.test(occuredAt)){
+            filters.occuredAt = {
+                gte: new Date(occuredAt+ "T00:00:00.000Z"),
+                lte: new Date(occuredAt+"T23:59:59.999Z")
+            };
+        } else if(occuredAt){
+            filters.occuredAt = new Date(occuredAt);
+        }
 
         const interactions = await prisma.interaction.findMany({
             where: {
-                filters,
+                ...filters,
                 userId
             }
         });
@@ -98,7 +111,8 @@ const getInteraction = async(req,res)=>{
             });
         }
         return res.status(200).json({
-            message: `Found ${interactions.length} interaction logs with provided filters`
+            message: `Found ${interactions.length} interaction logs with provided filters`,
+            data: interactions
         });
     } catch (error) {
         console.error(error);
@@ -123,7 +137,7 @@ const updateInteraction = async(req,res)=>{
         
         const interaction = await prisma.interaction.findUnique({
             where:{
-                id: interactionId,
+                id: parseInt(interactionId),
                 userId
             }
         });
@@ -135,13 +149,14 @@ const updateInteraction = async(req,res)=>{
 
         await prisma.interaction.update({
             where: {
-                id: interactionId,
+                id: parseInt(interactionId),
                 userId
             },
             data: {
                 type, occuredAt, notes
             }
         });
+        const contactId = parseInt(interaction.contactId);
         // update lastContacted field of contact schema
         if(occuredAt){
             await prisma.contact.update({
@@ -169,10 +184,10 @@ const updateInteraction = async(req,res)=>{
 const deleteInteraction = async(req, res)=>{
     const {interactionId} = req.body;
     try {
-        userId = req.user.id;
+        const userId = req.user.id;
         const interaction = await prisma.interaction.findUnique({
             where:{
-                id: interactionId,
+                id: parseInt(interactionId),
                 userId
             }
         });
@@ -184,7 +199,7 @@ const deleteInteraction = async(req, res)=>{
 
         await prisma.interaction.delete({
             where:{
-                id: interactionId,
+                id: parseInt(interactionId),
                 userId
             }
         });

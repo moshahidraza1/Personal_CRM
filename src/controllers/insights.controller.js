@@ -84,8 +84,12 @@ const contactSummary = async(req, res)=>{
             _count:{_all:true}
         });
 
+        const result = summary.map(item=>({
+            type: item.type,
+            total_interactions: item._count._all
+        }));
         return res.json({
-            data: summary
+            data: result
         });
     } catch (error) {
         console.error(error);
@@ -112,7 +116,7 @@ const overallMetrics = async(req,res)=>{
             ]
         );
 
-        const avgInteractionPerContact = totalContacts? (totalContacts/totalInteractions).toFixed(2): 0;
+        const avgInteractionPerContact = totalContacts? (totalInteractions/totalContacts).toFixed(2): 0;
 
         return res.json({
             data: {totalContacts, totalInteractions, avgInteractionPerContact, totalTags}

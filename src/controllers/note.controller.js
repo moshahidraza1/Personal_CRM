@@ -5,17 +5,31 @@ export const createNote = async(req, res)=>{
     const userId = req.user.id;
     try{
         
-        const note = await prisma.note.create({
-            data:{
-                contactId, userId, title, content
+        const note = await prisma.note.findFirst({
+            where:{
+                contactId: parseInt(contactId),
+                userId, 
+                title
             }
         });
-        res.status(201).json({
+
+        if(note){
+            return res.status(409).json({
+                message:"For this contact a note with same title already exists."
+            });
+        }
+        
+        await prisma.note.create({
+            data:{
+                contactId: parseInt(contactId), userId, title, content
+            }
+        });
+        return res.status(201).json({
             message:"Successfully added note"
         });
     }catch(err){
         console.error(err);
-        res.status(500).json({
+        return res.status(500).json({
             message: "Failed to create note"
         });
     }
@@ -49,7 +63,7 @@ export const listNotes = async(req, res)=>{
 
 // get note by either noteId || contactId || title
 export const getNote = async(req, res)=>{
-    const {noteId, contactId, title} = req.param;
+    const {noteId, contactId, title} = req.query;
     if(!noteId && !contactId && !title){
         return res.status(401).json({
             message: "No parameters passed to filter notes"
@@ -58,19 +72,19 @@ export const getNote = async(req, res)=>{
     try {
         const filters = {};
     
-        if(noteId) filters.id = noteId;
-        if(contactId) filters.contactId = contactId;
+        if(noteId) filters.id = parseInt(noteId);
+        if(contactId) filters.contactId = parseInt(contactId);
         if(title) filters.title = title;
     
         const fetchedNote = await prisma.note.findMany({
             where:{
-                filters,
+                ...filters,
                 userId: req.user.id
             }
         });
         // if there  no notes with given filter
         if(!fetchedNote || fetchedNote.length==0){
-            return res.statu(401).json({
+            return res.status(401).json({
                 message: "No notes available with the requested filters"
             });
         }
@@ -99,7 +113,7 @@ export const updateNote = async(req,res)=>{
     try {
         const isNote = await prisma.note.findFirst({
             where:{
-                id: noteId,
+                id: parseInt(noteId),
                 userId: req.user.id
             }
         });
@@ -110,7 +124,7 @@ export const updateNote = async(req,res)=>{
         }
         const updatedNote = await prisma.note.update({
             where:{
-                id: noteId,
+                id: parseInt(noteId),
                 userId: req.user.id
             },
             data:{
@@ -138,7 +152,7 @@ export const deleteNote = async(req,res)=>{
     try {
         const isNote = await prisma.note.findFirst({
             where:{
-                id: noteId,
+                id: parseInt(noteId),
                 userId: req.user.id
             }
         });
@@ -149,7 +163,7 @@ export const deleteNote = async(req,res)=>{
         }
         await prisma.note.delete({
             where:{
-                id: noteId,
+                id: parseInt(noteId),
                 userId: req.user.id
             }
         });
