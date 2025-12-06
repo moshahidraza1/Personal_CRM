@@ -33,7 +33,9 @@
     "passport-google-oauth20": "^2.0.0",
     "rate-limit-redis": "^4.2.0",
     "redis": "^5.1.0",
-    "stripe": "^18.1.1"
+    "stripe": "^18.1.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "eslint": "^9.19.0",

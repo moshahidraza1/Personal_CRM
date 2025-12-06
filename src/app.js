@@ -18,10 +18,13 @@ const app = express();
 const corsOptions = {
     origin:  `${process.env.FRONTEND_URL}`,
     methods: 'GET,POST, PATCH, DELETE' ,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }
 
 app.use(cors(corsOptions));
+
+
 app.use(cookieParser());
 
 await redisClient.connect();
@@ -99,5 +102,8 @@ app.use('/api/v1/interactions', apiLimiter, interactionRouter);
 app.use('/api/v1/insights',  apiLimiter, insightsRouter);
 app.use('/api/v1/subscription', apiLimiter, subscriptionRouter);
 app.use('/api/v1/stripe', apiLimiter, stripeRouter);
+
+import setupSwagger from './config/swaggerConfig.js';
+setupSwagger(app);
 
 export {app};

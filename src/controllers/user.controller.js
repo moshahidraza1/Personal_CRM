@@ -337,29 +337,24 @@ const logOut = async(req,res)=>{
     try{
         const user = await prisma.user.findUnique({
         where:{
-            id:req.id,
+            id:req.user.id,
         }
     });
     if(!user){
         return req.status(400).message("User not found");
     }
-    await prisma.user.update({
-        where:{
-            id:user.id
-        },
-        data:{
-            refreshToken:null
-        }
-    })
+    
     return res.status(200).
-    clearCookie(accessToken,options)
-    .clearCookie(refreshToken,options)
+    clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
     .json({message:"user logged out"});
 
     }catch(error){
-        return res.json(500,{message: "Something went wrong while logging out"});
+        console.error(error);
+        return res.status(500).json({message: "Something went wrong while logging out"});
     }
 };
+
 // update password if user remembers old password
 const updatePassword = (async(req,res)=>{
     const {oldPassword,newPassword} = req.body;

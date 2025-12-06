@@ -66,21 +66,34 @@ const handleProfile = async(provider,profile,accessToken,refreshToken,done) => {
             return done(null, user);
         }
         let firstName, lastName;
-        let full = '';
         if(provider === 'google'){
-            firstName = profile.name?.givenName || '';
-            lastName = profile.name?.familyName || ''; 
+            if(profile.name?.givenName){
+                firstName = profile.name.givenName;
+                lastName = profile.name.familyName || '';
+            }else if(profile.displayName){
+                const nameParts = profile.displayName.trim().split(' ');
+                firstName = nameParts[0] || 'User';
+                lastName = nameParts.slice(1).join(' ') || '';
+            }else{
+                firstName = 'User';
+                lastName = '';
+            } 
         }else if(provider === 'github'){
-             full = profile.displayName || profile._json?.name || '';
+             const fullName = profile.displayName || profile._json?.name || '';
+             if(fullName){
+                const nameParts = fullName.trim().split(' ');
+                firstName = nameParts[0] || profile.username || 'User';
+                lastName = nameParts.slice(1).join(' ')|| ''; 
+             }else{
+                firstName = profile.userName || 'User';
+                lastName = '';
+             }
         }
-        if(full){
-            const [first, ...rest] = full.trim().split(' ');
-            firstName = first;
-            lastName = rest.join(' ');
-        }else{
-            firstName = profile.username;
-            lastName = '';
+        
+        if(!firstName || firstName.trim() === ''){
+            firstName = 'User';
         }
+
         const username = await generateUsernameFromEmail(email);
         user = await prisma.user.create({
             data:{
@@ -100,19 +113,51 @@ const handleProfile = async(provider,profile,accessToken,refreshToken,done) => {
                 }
             }
         });
+        console.log(`[OAuth] ${provider} authentication successful for user:`, email);
         return done(null, user);
 
     }catch(err){
+        console.error('[OAuth] Error in handleProfile:', err);
         done(err, null);
     }
 };
 
 const initializeOAuth = (app)=>{
     app.use(passport.initialize());
+    app.use(passport.session()); // Add this line
+    
+    // Add serialization
+    passport.serializeUser((user, done) => {
+        console.log('[OAuth] Serializing user:', user.id);
+        done(null, user.id);
+    });
+
+    passport.deserializeUser(async (id, done) => {
+        try {
+            const user = await prisma.user.findUnique({
+                where: { id }
+            });
+            console.log('[OAuth] Deserializing user:', user?.email);
+            done(null, user);
+        } catch (error) {
+            console.error('[OAuth] Deserialization error:', error);
+            done(error, null);
+        }
+    });
+
     //Google
     passport.use(new GoogleStrategy(oauthConfig.google,
-        (token,refresh, profile,done) => handleProfile('google', profile, token, refresh,done)
-    ));
+        (token,refresh, profile,done) => {
+        console.log('=== GOOGLE STRATEGY CALLBACK ===');
+        console.log('Profile received:', {
+            id: profile.id,
+            email: profile.emails?.[0]?.value,
+            name: profile.displayName
+        });
+        
+        return handleProfile('google', profile, token, refresh, done);
+    }));
+
     //GitHub
     passport.use(new GithubStrategy(oauthConfig.github, (token, refresh, profile, done) => handleProfile('github', profile, token, refresh, done)));
 }
