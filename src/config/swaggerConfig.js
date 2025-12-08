@@ -7,10 +7,13 @@ const swaggerOptions = {
     info: {
       title: 'Your API Title',
       version: '1.0.0',
-      description: 'API documentation',
+      description: 'API documentation for Personal_CRM',
     },
     servers: [
-      { url: 'http://localhost:3000' }
+      { 
+        url: process.env.API_URL || 'http://localhost:3000',
+        description: 'Server'
+       }
     ],
     tags: [
       {
@@ -44,7 +47,7 @@ const swaggerOptions = {
       }
     }
   },
-  apis: ['./src/routes/*.js'], // path to your route files
+  apis: ['./src/routes/*.js'], // path to route files
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);

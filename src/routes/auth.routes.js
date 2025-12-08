@@ -21,7 +21,9 @@ const router = Router();
  */
 
 const setCookies = (res, {accessToken, refreshToken})=>{
-    const options = {httpOnly:true, secure: process.env.NODE_ENV==='production', sameSite: 'lax'};
+    const options = {httpOnly:true, secure: process.env.NODE_ENV==='production', sameSite: 'lax',
+    path: '/'
+    };
     res.cookie('accessToken', accessToken, {...options, maxAge:15*60*1000});
     res.cookie('refreshToken', refreshToken, options);
 };

@@ -14,6 +14,8 @@ import {slidingWindowRateLimiter} from "./middlewares/redisRateLimiter.middlewar
 import prisma from "./db/db.config.js";
 const app = express();
 
+app.set('trust proxy', 1);
+
 const corsOptions = {
     origin:  `${process.env.FRONTEND_URL}`,
     methods: 'GET,POST, PATCH, DELETE' ,
@@ -37,9 +39,11 @@ app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie:{
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
         maxAge: 10*60*1000
     }
 }));
@@ -96,8 +100,13 @@ app.use('/api/v1/insights',  apiLimiter, insightsRouter);
 app.use('/api/v1/subscription', apiLimiter, subscriptionRouter);
 app.use('/api/v1/stripe', apiLimiter, stripeRouter);
 
-app.use(errorHandler); // for handling errors
+app.get('/', (req, res) => {
+  res.redirect('/api-docs');
+});
+
 import setupSwagger from './config/swaggerConfig.js';
 setupSwagger(app);
+
+app.use(errorHandler); // for handling errors
 
 export {app};
