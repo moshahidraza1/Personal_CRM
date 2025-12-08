@@ -1,5 +1,5 @@
 import prisma from '../db/db.config.js';
-
+// import { Prisma, PrismaClient } from '../prisma/generated/client';
 const generateUsernameFromEmail = async (email)=> {
     const base = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g,'') || 'user';
     let name = base, i=1;

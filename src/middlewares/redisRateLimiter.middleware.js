@@ -1,8 +1,9 @@
-import { createClient } from "redis";
+import { Redis } from '@upstash/redis'
 import { randomUUID } from "crypto";
 
-export const redisClient = createClient({
-    url:process.env.REDIS_URL || 'redis://localhost:6379'
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
 
@@ -13,30 +14,37 @@ export function slidingWindowRateLimiter({windowMs, max, keyPrefix = 'rl:'}){
             const key = keyPrefix + (req.user?.id || req.ip || 'anonymous');
             const now = Date.now();
             const windowStart = now-windowMs;
-    
-            // remove older queries outside the window
-            await redisClient.zRemRangeByScore(key, 0, windowStart);
-    
-            // count request in window using zCard || zCount
-            const reqCount = await redisClient.zCount(key, windowStart, now);
+            const member = `${now}:${randomUUID()}`; //unique member
+            const ttl = Math.ceil(windowMs/1000);
             
+            // to execute commands atomically
+            const tx = redis.multi();
+            // remove old entries
+            tx.zremrangebyscore(key,0,windowStart);
+            // adding a request
+            tx.zadd(key, {score: now, member});
+            // current count of requests
+            tx.zcard(key);
+            // expire keys after the window
+            tx.expire(key,ttl);
+            // execute transaction
+            const results = await tx.exec();
+            // current request count returned
+            const requestCount = results[2];
             
-            // if reqCount is greater than maximim limit
-            if(reqCount>= max){
+            // if requestCount is greater than maximim limit
+            if(requestCount > max){
+                console.log(`[Rate Limit Exceeded]  Key: ${key}, Count: ${requestCount}/${max}`);
+
                 return res.status(429).json({
                     message: 'Too many request, Please retry after sometime.'
                 });
             }
-    
-            // add request
-            await redisClient.zAdd(key, [{score: now, value: `${now}:${crypto.randomUUID()}`}]);
             
-            console.log(` [Rate Limit Status ] Key: ${key}, Count: ${reqCount+1}/${max}, windowMS: ${windowMs}`);
-
-            // auto cleanup
-            await redisClient.expire(key, Math.ceil(windowMs/1000));
+            console.log(` [Rate Limit Status ] Key: ${key}, Count: ${requestCount+1}/${max}, windowMS: ${windowMs}`);
     
             next();
+
         } catch (err) {
             console.error('Rate limiter error: ', err);
             return res.status(500).json({

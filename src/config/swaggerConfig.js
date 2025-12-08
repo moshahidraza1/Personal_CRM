@@ -50,7 +50,7 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // DEBUG: Log the generated spec
-console.log('Swagger Spec:', JSON.stringify(swaggerSpec, null, 2));
+// console.log('Swagger Spec:', JSON.stringify(swaggerSpec, null, 2));
 
 export default(app) =>{app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }; 

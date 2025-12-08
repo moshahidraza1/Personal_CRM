@@ -92,7 +92,7 @@ router.get('/google', (req,res,next) => {
  *         description: Error parameter if OAuth failed
  *     responses:
  *       302:
- *         description: Successful authentication - redirect to application dashboard
+ *         description: Redirects to Dashboard (Success) or Login (Failure)
  *         headers:
  *           Location:
  *             description: Redirect URL to application dashboard
@@ -105,45 +105,7 @@ router.get('/google', (req,res,next) => {
  *               type: array
  *               items:
  *                 type: string
- *               example: 
- *                 - "accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Lax; Max-Age=900"
- *                 - "refreshToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Lax"
- *       302:
- *         description: Authentication failed - redirect to login with error
- *         headers:
- *           Location:
- *             description: Login URL with error parameter
- *             schema:
- *               type: string
- *               example: "/login?error=oauth_failed"
- *       302:
- *         description: Invalid state parameter - redirect to login with error
- *         headers:
- *           Location:
- *             description: Login URL with invalid state error
- *             schema:
- *               type: string
- *               example: "/login?error=invalid_state"
  */
-// router.get('/google/callback', (req,res,next) => {
-//     if(!verifyOAuthState(req,req.query.state)){
-//         return res.redirect('/login?error=invalid_state');
-//     }
-//     passport.authenticate('google', {session:false, failureRedirect:'/login?error=oauth_failed'},
-//         async(err, user) => {
-//             if(err || !user) return res.redirect('/login?error=oauth_failed');
-
-//             const tokens = await generateAccessAndRefreshToken(user.id);
-//             setCookies(res, tokens);
-
-//             return res.redirect('/')
-
-//         }
-//     )(req,res,next);
-// });
-
-// ...existing code...
-// ...existing code...
 router.get('/google/callback', (req, res, next) => {
     
     passport.authenticate('google', { failureRedirect: '/login?error=oauth_failed' }, (err, user, info) => {
@@ -263,7 +225,7 @@ router.get("/github", (req,res,next)=>{
  *         description: Error parameter if OAuth failed
  *     responses:
  *       302:
- *         description: Successful authentication - redirect to application dashboard
+ *         description: Redirects to Dashboard (Success) or Login (Failure)
  *         headers:
  *           Location:
  *             description: Redirect URL to application dashboard
@@ -276,25 +238,6 @@ router.get("/github", (req,res,next)=>{
  *               type: array
  *               items:
  *                 type: string
- *               example: 
- *                 - "accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Lax; Max-Age=900"
- *                 - "refreshToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Lax"
- *       302:
- *         description: Authentication failed - redirect to login with error
- *         headers:
- *           Location:
- *             description: Login URL with error parameter
- *             schema:
- *               type: string
- *               example: "/login?error=oauth_failed"
- *       302:
- *         description: Invalid state parameter - redirect to login with error
- *         headers:
- *           Location:
- *             description: Login URL with invalid state error
- *             schema:
- *               type: string
- *               example: "/login?error=invalid_state"
  */
 router.get("/github/callback", (req,res,next)=>{
     if(!verifyOAuthState(req, req.query.state)){

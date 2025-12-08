@@ -8,9 +8,8 @@ npm-debug.log*
 
 # Environment variables
 .env
-
+.git
 # Docker files
-Dockerfile
 docker-compose.yml
 
 # Miscellaneous
